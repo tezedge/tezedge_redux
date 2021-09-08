@@ -10,8 +10,11 @@ use peer::connecting::{
     peer_connecting_effects, peer_connecting_reducer, PeerConnectionSuccessAction,
 };
 use peer::Peer;
-use peers::dns_lookup::{DefaultPeersDnsLookupService, PeersDnsLookupInitAction, PeersDnsLookupState, peers_dns_lookup_effects, peers_dns_lookup_reducer};
-use redux_rs::{Reducer, Store, combine_reducers};
+use peers::dns_lookup::{
+    peers_dns_lookup_effects, peers_dns_lookup_reducer, DefaultPeersDnsLookupService,
+    PeersDnsLookupInitAction, PeersDnsLookupState,
+};
+use redux_rs::{combine_reducers, Reducer, Store};
 
 use shell_proposer::mio_manager::{MioEvent, MioEvents, MioManager, NetPeer};
 use shell_proposer::{Event, Events, Manager, NetworkEvent};

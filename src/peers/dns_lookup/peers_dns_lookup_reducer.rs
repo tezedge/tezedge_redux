@@ -1,4 +1,8 @@
-use crate::{State, action::Action, peer::{Peer, PeerStatus}};
+use crate::{
+    action::Action,
+    peer::{Peer, PeerStatus},
+    State,
+};
 
 use super::{PeersDnsLookupState, PeersDnsLookupStatus};
 

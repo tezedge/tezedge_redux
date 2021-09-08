@@ -18,7 +18,6 @@ pub fn peer_connecting_effects(store: &mut Store<State, Service, Action>, action
                 .into(),
             });
         }
-
         _ => {}
     }
 }

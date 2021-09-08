@@ -42,12 +42,6 @@ pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
                     peer.status = PeerStatus::Connecting(PeerConnecting::Success);
                 }
             }
-            let peer = state.peers.entry(action.address).or_insert_with(|| Peer {
-                status: PeerStatus::Potential,
-            });
-            if matches!(peer.status, PeerStatus::Potential) {
-                peer.status = PeerStatus::Connecting(PeerConnecting::Idle);
-            }
         }
         _ => {}
     }
