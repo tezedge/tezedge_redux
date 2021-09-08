@@ -6,8 +6,7 @@ use crate::{
 
 use super::PeerConnecting;
 
-pub fn peer_connecting_reducer(state: &State, action: &Action) -> State {
-    let mut state = state.clone();
+pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
     match action {
         Action::PeerConnectionInit(action) => {
             let peer = state.peers.entry(action.address).or_insert_with(|| Peer {
@@ -52,5 +51,4 @@ pub fn peer_connecting_reducer(state: &State, action: &Action) -> State {
         }
         _ => {}
     }
-    state
 }

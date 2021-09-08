@@ -11,7 +11,7 @@ use peer::connecting::{
 };
 use peer::Peer;
 use peers::dns_lookup::{DefaultPeersDnsLookupService, PeersDnsLookupInitAction, PeersDnsLookupState, peers_dns_lookup_effects, peers_dns_lookup_reducer};
-use redux_rs::Store;
+use redux_rs::{Reducer, Store, combine_reducers};
 
 use shell_proposer::mio_manager::{MioEvent, MioEvents, MioManager, NetPeer};
 use shell_proposer::{Event, Events, Manager, NetworkEvent};
@@ -36,13 +36,6 @@ impl State {
             peers_dns_lookup: None,
         }
     }
-}
-
-// Here comes the reducer. It gets the current state plus an action to perform and returns a new state.
-fn reducer(state: &State, action: &Action) -> State {
-    let state = peer_connecting_reducer(state, action);
-    let state = peers_dns_lookup_reducer(&state, action);
-    state
 }
 
 fn effects_middleware(store: &mut Store<State, Service, Action>, action: &Action) {
@@ -92,6 +85,12 @@ impl Service {
 }
 
 fn main() {
+    let reducer: Reducer<State, Action> = combine_reducers!(
+        State,
+        Action,
+        peers_dns_lookup_reducer,
+        peer_connecting_reducer
+    );
     let mut store = Store::new(reducer, Service::new(), State::new());
 
     store.add_middleware(log_middleware);

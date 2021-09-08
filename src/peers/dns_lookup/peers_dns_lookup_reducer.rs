@@ -2,8 +2,7 @@ use crate::{State, action::Action, peer::{Peer, PeerStatus}};
 
 use super::{PeersDnsLookupState, PeersDnsLookupStatus};
 
-pub fn peers_dns_lookup_reducer(state: &State, action: &Action) -> State {
-    let mut state = state.clone();
+pub fn peers_dns_lookup_reducer(state: &mut State, action: &Action) {
     match action {
         Action::PeersDnsLookupInit(action) => {
             state.peers_dns_lookup = Some(PeersDnsLookupState {
@@ -43,5 +42,4 @@ pub fn peers_dns_lookup_reducer(state: &State, action: &Action) -> State {
         }
         _ => {}
     }
-    state
 }
