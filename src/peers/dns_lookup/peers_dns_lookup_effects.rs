@@ -7,7 +7,10 @@ use crate::{action::Action, Service, State};
 
 use super::{PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupSuccessAction};
 
-pub fn peers_dns_lookup_effects(store: &mut Store<State, Service, Action>, action: &Action) {
+pub fn peers_dns_lookup_effects<Mio>(
+    store: &mut Store<State, Service<Mio>, Action>,
+    action: &Action,
+) {
     match action {
         Action::PeersDnsLookupInit(action) => {
             let result = store

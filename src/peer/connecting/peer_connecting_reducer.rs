@@ -19,7 +19,9 @@ pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
         Action::PeerConnectionPending(action) => {
             if let Some(peer) = state.peers.get_mut(&action.address) {
                 if matches!(peer.status, PeerStatus::Connecting(PeerConnecting::Idle)) {
-                    peer.status = PeerStatus::Connecting(PeerConnecting::Pending);
+                    peer.status = PeerStatus::Connecting(PeerConnecting::Pending {
+                        token: action.token,
+                    });
                 }
             }
         }
@@ -28,7 +30,7 @@ pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
                 if matches!(
                     peer.status,
                     PeerStatus::Connecting(PeerConnecting::Idle)
-                        | PeerStatus::Connecting(PeerConnecting::Pending)
+                        | PeerStatus::Connecting(PeerConnecting::Pending { .. })
                 ) {
                     peer.status = PeerStatus::Connecting(PeerConnecting::Error {
                         error: action.error,
@@ -38,8 +40,8 @@ pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
         }
         Action::PeerConnectionSuccess(action) => {
             if let Some(peer) = state.peers.get_mut(&action.address) {
-                if matches!(peer.status, PeerStatus::Connecting(PeerConnecting::Pending)) {
-                    peer.status = PeerStatus::Connecting(PeerConnecting::Success);
+                if let PeerStatus::Connecting(PeerConnecting::Pending { token }) = peer.status {
+                    peer.status = PeerStatus::Connecting(PeerConnecting::Success { token });
                 }
             }
         }

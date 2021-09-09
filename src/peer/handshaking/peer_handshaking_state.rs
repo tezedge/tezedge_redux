@@ -7,18 +7,13 @@ use tezos_messages::p2p::{
 
 use crate::Port;
 
-use super::connecting::PeerConnecting;
-
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum RequestState {
-    // Idle { at: SystemTime },
-    // Pending { at: SystemTime },
-    // Success { at: SystemTime },
-    // Error { at: SystemTime },
+pub enum MessageSendState {
     Idle,
-    Pending,
+    Pending { written: usize },
     Success,
-    Error,
+    // TODO: use custom error instead.
+    Error { error: std::io::ErrorKind },
 }
 
 #[derive(Debug, Clone)]
@@ -33,13 +28,16 @@ pub struct ReceivedConnectionMessageData {
 pub enum PeerHandshakingStatus {
     /// Exchange Connection message.
     ExchangeConnectionMessage {
-        sent: RequestState,
+        /// Encoded `ConnectionMessage` to be sent.
+        send_conn_msg: BinaryChunk,
+        sent: MessageSendState,
         received: Option<ReceivedConnectionMessageData>,
-        sent_conn_msg: BinaryChunk,
     },
     /// Exchange Metadata message.
     ExchangeMetadataMessage {
-        sent: RequestState,
+        /// Encoded `MetadataMessage` to be sent.
+        send_meta_msg: BinaryChunk,
+        sent: MessageSendState,
         received: Option<MetadataMessage>,
 
         port: Port,
@@ -49,7 +47,9 @@ pub enum PeerHandshakingStatus {
     },
     /// Exchange Ack message.
     ExchangeAckMessage {
-        sent: RequestState,
+        /// Encoded `AckMessage` to be sent.
+        send_ack_message: BinaryChunk,
+        sent: MessageSendState,
         received: bool,
 
         port: Port,
@@ -63,33 +63,7 @@ pub enum PeerHandshakingStatus {
 
 #[derive(Debug, Clone)]
 pub struct PeerHandshaking {
-    pub token: mio::Token,
+    pub token: PeerToken,
     pub status: PeerHandshakingStatus,
     pub incoming: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerHandshaked {
-    pub token: mio::Token,
-    pub port: Port,
-    pub version: NetworkVersion,
-    pub public_key: PublicKey,
-    pub crypto: PeerCrypto,
-    pub disable_mempool: bool,
-    pub private_node: bool,
-}
-
-#[derive(Debug, Clone)]
-pub enum PeerStatus {
-    /// Peer is a potential peer.
-    Potential,
-
-    Connecting(PeerConnecting),
-    Handshaking(PeerHandshaking),
-    Handshaked(PeerHandshaked),
-}
-
-#[derive(Debug, Clone)]
-pub struct Peer {
-    pub status: PeerStatus,
 }

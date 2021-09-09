@@ -16,13 +16,16 @@ use peers::dns_lookup::{
 };
 use redux_rs::{combine_reducers, Reducer, Store};
 
-use shell_proposer::mio_manager::{MioEvent, MioEvents, MioManager, NetPeer};
-use shell_proposer::{Event, Events, Manager, NetworkEvent};
-
 pub mod peer;
 pub mod peers;
 
 pub mod action;
+
+pub mod event;
+use event::{Event, Events};
+
+pub mod mio_service;
+use mio_service::{MioEvents, MioService, MioServiceDefault};
 
 pub type Port = u16;
 
@@ -41,60 +44,60 @@ impl State {
     }
 }
 
-fn effects_middleware(store: &mut Store<State, Service, Action>, action: &Action) {
+fn effects_middleware<Mio: MioService>(
+    store: &mut Store<State, Service<Mio>, Action>,
+    action: &Action,
+) {
     peer_connecting_effects(store, action);
     peers_dns_lookup_effects(store, action);
 }
 
-fn log_middleware(store: &mut Store<State, Service, Action>, action: &Action) {
+fn log_middleware<Mio>(store: &mut Store<State, Service<Mio>, Action>, action: &Action) {
     eprintln!("[+] Action: {:#?}", &action);
     // eprintln!("[+] State: {:?}\n", store.state());
 }
 
-pub struct Service {
-    mio: MioManager,
-    // TODO: use generic instead
-    pub dns: DefaultPeersDnsLookupService,
+pub struct Service<Mio> {
+    // TODO: use generics with traits instead
+    dns: DefaultPeersDnsLookupService,
+    mio: Mio,
 }
 
-impl Service {
-    pub fn new() -> Self {
+impl<Mio> Service<Mio>
+where
+    Mio: MioService,
+{
+    pub fn new(mio: Mio) -> Self {
         Self {
-            mio: MioManager::new(SocketAddr::V4(SocketAddrV4::new(
-                Ipv4Addr::new(0, 0, 0, 0),
-                9734,
-            ))),
             dns: DefaultPeersDnsLookupService {},
+            mio,
         }
     }
 
-    pub fn wait_for_events(&mut self, events: &mut MioEvents) {
-        self.mio.wait_for_events(events, None)
+    pub fn dns(&mut self) -> &mut DefaultPeersDnsLookupService {
+        &mut self.dns
     }
 
-    pub fn peer_connection_init(&mut self, address: &SocketAddr) -> io::Result<()> {
-        // TODO: rename method on mio.
-        self.mio.get_peer_or_connect_mut(&address.into())?;
-        Ok(())
-    }
-
-    /// Get peer for which the event was received.
-    ///
-    /// mio::Event contains `mio::Token`, which is used to find the peer,
-    /// but when mocking, this method could work some other way.
-    fn get_peer_for_event_mut(&mut self, event: &MioEvent) -> Option<&mut NetPeer> {
-        self.mio.get_peer_for_event_mut(event)
+    pub fn mio(&mut self) -> &mut Mio {
+        &mut self.mio
     }
 }
 
 fn main() {
+    let mio = MioServiceDefault::new(SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::new(0, 0, 0, 0),
+        9734,
+    )));
+
     let reducer: Reducer<State, Action> = combine_reducers!(
         State,
         Action,
         peers_dns_lookup_reducer,
         peer_connecting_reducer
     );
-    let mut store = Store::new(reducer, Service::new(), State::new());
+
+    let service = Service::new(mio);
+    let mut store = Store::new(reducer, service, State::new());
 
     store.add_middleware(log_middleware);
     store.add_middleware(effects_middleware);
@@ -111,27 +114,9 @@ fn main() {
     events.set_limit(1024);
 
     loop {
-        store.service().wait_for_events(&mut events);
+        store.service().mio().wait_for_events(&mut events, None);
         for event in events.into_iter() {
-            match event {
-                Event::Tick(_) => {}
-                Event::Network(event) => {
-                    let peer = match store.service().get_peer_for_event_mut(event) {
-                        Some(peer) => peer,
-                        None => continue,
-                    };
-                    // when we receive first writable event from mio,
-                    // that's when we know that we successfuly connected
-                    // to the peer.
-                    if event.is_writable() {
-                        if !peer.is_connected() {
-                            peer.set_connected();
-                            let address = peer.address().into();
-                            store.dispatch(PeerConnectionSuccessAction { address }.into());
-                        }
-                    }
-                }
-            }
+            store.dispatch(Action::Event(event.to_owned()));
         }
     }
 }

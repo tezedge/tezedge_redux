@@ -1,5 +1,6 @@
 use derive_more::From;
 
+use crate::event::Event;
 use crate::peer::connecting::{
     PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
@@ -20,4 +21,6 @@ pub enum Action {
     PeerConnectionPending(PeerConnectionPendingAction),
     PeerConnectionError(PeerConnectionErrorAction),
     PeerConnectionSuccess(PeerConnectionSuccessAction),
+
+    Event(Event<mio::event::Event>),
 }

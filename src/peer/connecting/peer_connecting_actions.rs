@@ -9,6 +9,7 @@ pub struct PeerConnectionInitAction {
 #[derive(Debug, Clone)]
 pub struct PeerConnectionPendingAction {
     pub address: SocketAddr,
+    pub token: mio::Token,
 }
 
 #[derive(Debug, Clone)]
