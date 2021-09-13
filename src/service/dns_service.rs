@@ -1,6 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 
-pub trait PeersDnsLookupService {
+pub trait DnsService {
     /// Try to resolve common peer name into Socket Address representation.
     fn resolve_dns_name_to_peer_address(
         &mut self,
@@ -9,9 +9,16 @@ pub trait PeersDnsLookupService {
     ) -> Result<Vec<SocketAddr>, dns_lookup::LookupError>;
 }
 
-pub struct DefaultPeersDnsLookupService;
+#[derive(Debug, Default, Clone)]
+pub struct DnsServiceDefault;
 
-impl PeersDnsLookupService for DefaultPeersDnsLookupService {
+impl DnsServiceDefault {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl DnsService for DnsServiceDefault {
     fn resolve_dns_name_to_peer_address(
         &mut self,
         address: &str,

@@ -1,72 +1,10 @@
 use crypto::crypto_box::PublicKey;
 use shell_state::networking::peer::PeerCrypto;
-use tezos_messages::p2p::{
-    binary_message::BinaryChunk,
-    encoding::{metadata::MetadataMessage, version::NetworkVersion},
-};
+use tezos_messages::p2p::encoding::version::NetworkVersion;
 
 use crate::Port;
 
-use super::connecting::PeerConnecting;
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum RequestState {
-    // Idle { at: SystemTime },
-    // Pending { at: SystemTime },
-    // Success { at: SystemTime },
-    // Error { at: SystemTime },
-    Idle,
-    Pending,
-    Success,
-    Error,
-}
-
-#[derive(Debug, Clone)]
-pub struct ReceivedConnectionMessageData {
-    port: Port,
-    compatible_version: Option<NetworkVersion>,
-    public_key: PublicKey,
-    encoded: BinaryChunk,
-}
-
-#[derive(Debug, Clone)]
-pub enum PeerHandshakingStatus {
-    /// Exchange Connection message.
-    ExchangeConnectionMessage {
-        sent: RequestState,
-        received: Option<ReceivedConnectionMessageData>,
-        sent_conn_msg: BinaryChunk,
-    },
-    /// Exchange Metadata message.
-    ExchangeMetadataMessage {
-        sent: RequestState,
-        received: Option<MetadataMessage>,
-
-        port: Port,
-        compatible_version: Option<NetworkVersion>,
-        public_key: PublicKey,
-        crypto: PeerCrypto,
-    },
-    /// Exchange Ack message.
-    ExchangeAckMessage {
-        sent: RequestState,
-        received: bool,
-
-        port: Port,
-        compatible_version: Option<NetworkVersion>,
-        public_key: PublicKey,
-        disable_mempool: bool,
-        private_node: bool,
-        crypto: PeerCrypto,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerHandshaking {
-    pub token: mio::Token,
-    pub status: PeerHandshakingStatus,
-    pub incoming: bool,
-}
+use super::{connecting::PeerConnecting, handshaking::PeerHandshaking};
 
 #[derive(Debug, Clone)]
 pub struct PeerHandshaked {

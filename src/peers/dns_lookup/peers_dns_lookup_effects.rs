@@ -2,20 +2,17 @@ use redux_rs::Store;
 
 use crate::peer::connecting::PeerConnectionInitAction;
 use crate::peer::PeerStatus;
-use crate::peers::dns_lookup::PeersDnsLookupService;
-use crate::{action::Action, Service, State};
+use crate::service::{DnsService, Service};
+use crate::{action::Action, State};
 
 use super::{PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupSuccessAction};
 
-pub fn peers_dns_lookup_effects<Mio>(
-    store: &mut Store<State, Service<Mio>, Action>,
-    action: &Action,
-) {
+pub fn peers_dns_lookup_effects<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
     match action {
         Action::PeersDnsLookupInit(action) => {
             let result = store
                 .service()
-                .dns
+                .dns()
                 .resolve_dns_name_to_peer_address(&action.address, action.port);
             store.dispatch(match result {
                 Ok(addresses) => PeersDnsLookupSuccessAction { addresses }.into(),

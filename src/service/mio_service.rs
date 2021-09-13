@@ -3,12 +3,15 @@
 
 use mio::net::{TcpListener, TcpSocket, TcpStream};
 use slab::Slab;
-use std::io;
+use std::io::{self, Read, Write};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use crate::event::{Event, EventRef, Events, NetworkEvent};
+use crate::event::{Event, P2pPeerEvent, P2pPeerUnknownEvent, P2pServerEvent};
+
+pub type MioInternalEvent = mio::event::Event;
+pub type MioInternalEventsContainer = mio::Events;
 
 /// We will receive listening socket server events with this token, when
 /// there are incoming connections that need to be accepted.
@@ -17,13 +20,10 @@ pub const MIO_SERVER_TOKEN: mio::Token = mio::Token(usize::MAX);
 /// Event with this token will be issued, when `mio::Waker::wake` is called.
 pub const MIO_WAKE_TOKEN: mio::Token = mio::Token(usize::MAX - 1);
 
-pub type MioEvent = mio::event::Event;
-pub type EventDefault = mio::event::Event;
 pub type MioPeerDefault = MioPeer<TcpStream>;
 
 pub trait MioService {
-    type PeerStream;
-    type NetworkEvent;
+    type PeerStream: Read + Write;
     type Events;
 
     fn wait_for_events(&mut self, events: &mut Self::Events, timeout: Option<Duration>);
@@ -32,7 +32,6 @@ pub trait MioService {
     fn stop_listening_to_incoming_peer_connections(&mut self);
     fn accept_incoming_peer_connection(
         &mut self,
-        event: &Self::NetworkEvent,
     ) -> Option<(mio::Token, &mut MioPeer<Self::PeerStream>)>;
 
     fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<mio::Token>;
@@ -49,96 +48,6 @@ pub struct MioPeer<Stream> {
 impl<Stream> MioPeer<Stream> {
     pub fn new(address: SocketAddr, stream: Stream) -> Self {
         Self { address, stream }
-    }
-}
-
-impl NetworkEvent for EventDefault {
-    #[inline(always)]
-    fn token(&self) -> mio::Token {
-        MioEvent::token(self)
-    }
-
-    #[inline(always)]
-    fn is_server_event(&self) -> bool {
-        self.token() == MIO_SERVER_TOKEN
-    }
-
-    #[inline(always)]
-    fn is_waker_event(&self) -> bool {
-        self.token() == MIO_WAKE_TOKEN
-    }
-
-    #[inline(always)]
-    fn is_readable(&self) -> bool {
-        MioEvent::is_readable(self)
-    }
-
-    #[inline(always)]
-    fn is_writable(&self) -> bool {
-        MioEvent::is_writable(self)
-    }
-
-    #[inline(always)]
-    fn is_closed(&self) -> bool {
-        MioEvent::is_error(self)
-            || MioEvent::is_read_closed(self)
-            || MioEvent::is_write_closed(self)
-    }
-}
-
-/// Mio events container.
-#[derive(Debug)]
-pub struct MioEvents {
-    mio_events: mio::Events,
-    tick_event_time: Option<Instant>,
-}
-
-impl MioEvents {
-    pub fn new() -> Self {
-        Self {
-            mio_events: mio::Events::with_capacity(0),
-            tick_event_time: None,
-        }
-    }
-}
-
-impl<'a> IntoIterator for &'a MioEvents {
-    type Item = EventRef<'a, MioEvent>;
-    type IntoIter = MioEventsIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let tick_event_time = self
-            .tick_event_time
-            .filter(|_| self.mio_events.is_empty())
-            .clone();
-        MioEventsIter {
-            mio_events_iter: self.mio_events.iter(),
-            tick_event_time,
-        }
-    }
-}
-
-pub struct MioEventsIter<'a> {
-    mio_events_iter: mio::event::Iter<'a>,
-    tick_event_time: Option<Instant>,
-}
-
-impl<'a> Iterator for MioEventsIter<'a> {
-    type Item = EventRef<'a, MioEvent>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let tick_event_time = &mut self.tick_event_time;
-
-        self.mio_events_iter
-            .next()
-            .map(|event| EventRef::Network(event))
-            .or_else(|| tick_event_time.take().map(|time| Event::Tick(time)))
-    }
-}
-
-impl Events for MioEvents {
-    fn set_limit(&mut self, limit: usize) {
-        self.mio_events = mio::Events::with_capacity(limit);
     }
 }
 
@@ -181,24 +90,49 @@ impl MioServiceDefault {
     pub fn waker(&self) -> Arc<mio::Waker> {
         self.waker.clone()
     }
+
+    pub fn transform_event(&mut self, event: &mio::event::Event) -> Event {
+        if event.token() == MIO_WAKE_TOKEN {
+            Event::Waker
+        } else if event.token() == MIO_SERVER_TOKEN {
+            P2pServerEvent {}.into()
+        } else {
+            let is_closed = event.is_error() || event.is_read_closed() || event.is_write_closed();
+
+            match self.get_peer(event.token()) {
+                Some(peer) => P2pPeerEvent {
+                    token: event.token(),
+                    address: peer.address,
+
+                    is_readable: event.is_readable(),
+                    is_writable: event.is_writable(),
+                    is_closed,
+                }
+                .into(),
+                None => P2pPeerUnknownEvent {
+                    token: event.token(),
+
+                    is_readable: event.is_readable(),
+                    is_writable: event.is_writable(),
+                    is_closed,
+                }
+                .into(),
+            }
+        }
+    }
 }
 
 impl MioService for MioServiceDefault {
     type PeerStream = TcpStream;
-    type NetworkEvent = MioEvent;
-    type Events = MioEvents;
+    type Events = MioInternalEventsContainer;
 
     fn wait_for_events(&mut self, events: &mut Self::Events, timeout: Option<Duration>) {
-        match self.poll.poll(&mut events.mio_events, timeout) {
+        match self.poll.poll(events, timeout) {
             Ok(_) => {}
             Err(err) => {
                 eprintln!("Mio Poll::poll failed! Error: {:?}", err);
             }
         };
-
-        if events.mio_events.is_empty() {
-            events.tick_event_time = Some(Instant::now());
-        }
     }
 
     fn start_listening_to_incoming_peer_connections(&mut self) -> io::Result<()> {
@@ -234,7 +168,6 @@ impl MioService for MioServiceDefault {
 
     fn accept_incoming_peer_connection(
         &mut self,
-        _: &Self::NetworkEvent,
     ) -> Option<(mio::Token, &mut MioPeer<Self::PeerStream>)> {
         let server = &mut self.server;
         let poll = &mut self.poll;

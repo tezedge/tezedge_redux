@@ -1,18 +1,18 @@
 use redux_rs::Store;
 
-use crate::event::Event;
-use crate::mio_service::MioService;
+use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::PeerStatus;
-use crate::{action::Action, Service, State};
+use crate::service::{MioService, Service};
+use crate::{action::Action, State};
 
 use super::{
     PeerConnecting, PeerConnectionErrorAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
 };
 
-pub fn peer_connecting_effects<Mio>(store: &mut Store<State, Service<Mio>, Action>, action: &Action)
+pub fn peer_connecting_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
 where
-    Mio: MioService,
+    S: Service,
 {
     match action {
         Action::PeerConnectionInit(action) => {
@@ -27,11 +27,7 @@ where
                 .into(),
             });
         }
-        Action::Event(event) => {
-            let event = match event {
-                Event::Network(event) => event,
-                _ => return,
-            };
+        Action::P2pPeerEvent(event) => {
             // when we receive first writable event from mio,
             // that's when we know that we successfuly connected
             // to the peer.
@@ -55,6 +51,15 @@ where
                 }
                 _ => {}
             }
+        }
+        Action::PeerConnectionSuccess(action) => {
+            let address = action.address;
+            store.dispatch(
+                PeerHandshakingInitAction {
+                    address: action.address,
+                }
+                .into(),
+            )
         }
         _ => {}
     }

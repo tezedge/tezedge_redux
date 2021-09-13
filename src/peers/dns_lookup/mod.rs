@@ -9,6 +9,3 @@ pub use peers_dns_lookup_reducer::*;
 
 mod peers_dns_lookup_effects;
 pub use peers_dns_lookup_effects::*;
-
-mod peers_dns_lookup_service;
-pub use peers_dns_lookup_service::*;
