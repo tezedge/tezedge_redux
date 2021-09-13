@@ -10,7 +10,7 @@ use peer::connecting::{
 };
 use peer::handshaking::connection_message::write::peer_connection_message_write_effects;
 use peer::handshaking::peer_handshaking_effects;
-use peer::Peer;
+use peer::{peer_effects, Peer};
 use peers::dns_lookup::{
     peers_dns_lookup_effects, peers_dns_lookup_reducer, PeersDnsLookupInitAction,
     PeersDnsLookupState,
@@ -59,6 +59,7 @@ impl State {
 
 fn effects_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
     peers_dns_lookup_effects(store, action);
+    peer_effects(store, action);
     peer_connecting_effects(store, action);
     peer_handshaking_effects(store, action);
     peer_connection_message_write_effects(store, action);

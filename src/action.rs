@@ -5,6 +5,7 @@ use crate::peer::connecting::{
     PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
 };
+use crate::peer::PeerTryWriteAction;
 use crate::peer::handshaking::connection_message::write::{
     PeerConnectionMessagePartWrittenAction, PeerConnectionMessageWriteErrorAction,
     PeerConnectionMessageWriteInitAction, PeerConnectionMessageWriteSuccessAction,
@@ -27,12 +28,13 @@ pub enum Action {
     PeerConnectionError(PeerConnectionErrorAction),
     PeerConnectionSuccess(PeerConnectionSuccessAction),
 
+    P2pPeerEvent(P2pPeerEvent),
+    PeerTryWrite(PeerTryWriteAction),
+
     PeerHandshakingInit(PeerHandshakingInitAction),
 
     PeerConnectionMessageWriteInit(PeerConnectionMessageWriteInitAction),
     PeerConnectionMessagePartWritten(PeerConnectionMessagePartWrittenAction),
     PeerConnectionMessageWriteError(PeerConnectionMessageWriteErrorAction),
     PeerConnectionMessageWriteSuccess(PeerConnectionMessageWriteSuccessAction),
-
-    P2pPeerEvent(P2pPeerEvent),
 }
