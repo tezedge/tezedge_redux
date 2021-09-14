@@ -1,32 +1,35 @@
+use redux_rs::{combine_reducers, Reducer, Store};
 use std::net::SocketAddrV4;
 use std::{
     collections::BTreeMap,
     net::{Ipv4Addr, SocketAddr},
 };
 
+pub mod event;
+use event::Event;
+
+pub mod action;
 use action::Action;
-use peer::connecting::{
-    peer_connecting_effects, peer_connecting_reducer, PeerConnectionSuccessAction,
+
+pub mod config;
+use config::{default_config, Config};
+
+pub mod peer;
+use peer::connecting::{peer_connecting_effects, peer_connecting_reducer};
+use peer::handshaking::connection_message::read::{
+    peer_connection_message_read_effects, peer_connection_message_read_reducer,
 };
-use peer::handshaking::connection_message::write::peer_connection_message_write_effects;
-use peer::handshaking::peer_handshaking_effects;
+use peer::handshaking::connection_message::write::{
+    peer_connection_message_write_effects, peer_connection_message_write_reducer,
+};
+use peer::handshaking::{peer_handshaking_effects, peer_handshaking_reducer};
 use peer::{peer_effects, Peer};
+
+pub mod peers;
 use peers::dns_lookup::{
     peers_dns_lookup_effects, peers_dns_lookup_reducer, PeersDnsLookupInitAction,
     PeersDnsLookupState,
 };
-use redux_rs::{combine_reducers, Reducer, Store};
-
-pub mod peer;
-pub mod peers;
-
-pub mod action;
-
-pub mod event;
-use event::Event;
-
-pub mod config;
-use config::{default_config, Config};
 
 pub mod service;
 use service::mio_service::MioInternalEventsContainer;
@@ -34,9 +37,6 @@ use service::{
     DnsServiceDefault, MioService, MioServiceDefault, RandomnessServiceDefault, Service,
     ServiceDefault,
 };
-
-use crate::peer::handshaking::connection_message::write::peer_connection_message_write_reducer;
-use crate::peer::handshaking::peer_handshaking_reducer;
 
 pub type Port = u16;
 
@@ -63,11 +63,12 @@ fn effects_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &
     peer_connecting_effects(store, action);
     peer_handshaking_effects(store, action);
     peer_connection_message_write_effects(store, action);
+    peer_connection_message_read_effects(store, action);
 }
 
 fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
     eprintln!("[+] Action: {:#?}", &action);
-    // eprintln!("[+] State: {:?}\n", store.state());
+    // eprintln!("[+] State: {:#?}\n", store.state());
 }
 
 fn main() {
@@ -85,7 +86,8 @@ fn main() {
         peers_dns_lookup_reducer,
         peer_connecting_reducer,
         peer_handshaking_reducer,
-        peer_connection_message_write_reducer
+        peer_connection_message_write_reducer,
+        peer_connection_message_read_reducer
     );
 
     let mut store = Store::new(reducer, service, State::new(default_config()));

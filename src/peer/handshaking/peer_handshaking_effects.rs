@@ -4,8 +4,12 @@ use tezos_messages::p2p::encoding::connection::ConnectionMessage;
 
 use crate::action::Action;
 use crate::peer::handshaking::connection_message::write::PeerConnectionMessageWriteInitAction;
+use crate::peer::PeerStatus;
 use crate::service::{RandomnessService, Service};
 use crate::State;
+
+use super::connection_message::read::PeerConnectionMessageReadInitAction;
+use super::PeerHandshakingStatus;
 
 pub fn peer_handshaking_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
 where
@@ -45,6 +49,32 @@ where
                 }
                 .into(),
             );
+        }
+        Action::PeerConnectionMessageWriteSuccess(action) => {
+            // check if sending ConnectionMessage was successful.
+            let conn_msg_successfully_sent = store
+                .state
+                .get()
+                .peers
+                .get(&action.address)
+                .and_then(|peer| match &peer.status {
+                    PeerStatus::Handshaking(x) => Some(x),
+                    _ => None,
+                })
+                .and_then(|handshaking| match &handshaking.status {
+                    PeerHandshakingStatus::ConnectionMessageWrite { status, .. } => Some(status),
+                    _ => None,
+                })
+                .map(|status| status.is_success());
+
+            if conn_msg_successfully_sent.unwrap_or(false) {
+                store.dispatch(
+                    PeerConnectionMessageReadInitAction {
+                        address: action.address,
+                    }
+                    .into(),
+                );
+            }
         }
         _ => {}
     }

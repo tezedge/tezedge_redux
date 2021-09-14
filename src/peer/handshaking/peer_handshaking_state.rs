@@ -1,13 +1,15 @@
 use std::io;
 
 use crypto::crypto_box::PublicKey;
+use shell_state::networking::chunking::ChunkReadBuffer;
 use shell_state::networking::peer::PeerCrypto;
 use tezos_messages::p2p::binary_message::BinaryChunk;
+use tezos_messages::p2p::encoding::ack::NackMotive;
 use tezos_messages::p2p::encoding::prelude::{AckMessage, MetadataMessage, NetworkVersion};
 
 use crate::Port;
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum MessageWriteState {
     Idle,
     Pending { written: usize },
@@ -28,10 +30,10 @@ impl MessageWriteState {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum MessageReadState<M> {
     Idle,
-    Pending { bytes: Vec<u8> },
+    Pending { buffer: ChunkReadBuffer },
     Success { message: M },
     // TODO: use custom error instead.
     Error { error: io::ErrorKind },
@@ -39,10 +41,10 @@ pub enum MessageReadState<M> {
 
 #[derive(Debug, Clone)]
 pub struct ConnectionMessageDataReceived {
-    port: Port,
-    compatible_version: Option<NetworkVersion>,
-    public_key: PublicKey,
-    encoded: BinaryChunk,
+    pub port: Port,
+    pub compatible_version: Option<NetworkVersion>,
+    pub public_key: PublicKey,
+    pub encoded: BinaryChunk,
 }
 
 #[derive(Debug, Clone)]

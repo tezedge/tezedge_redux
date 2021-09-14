@@ -5,12 +5,16 @@ use crate::peer::connecting::{
     PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
 };
-use crate::peer::PeerTryWriteAction;
+use crate::peer::handshaking::connection_message::read::{
+    PeerConnectionMessagePartReadAction, PeerConnectionMessageReadErrorAction,
+    PeerConnectionMessageReadInitAction, PeerConnectionMessageReadSuccessAction,
+};
 use crate::peer::handshaking::connection_message::write::{
     PeerConnectionMessagePartWrittenAction, PeerConnectionMessageWriteErrorAction,
     PeerConnectionMessageWriteInitAction, PeerConnectionMessageWriteSuccessAction,
 };
 use crate::peer::handshaking::PeerHandshakingInitAction;
+use crate::peer::{PeerTryReadAction, PeerTryWriteAction};
 use crate::peers::dns_lookup::{
     PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
@@ -30,6 +34,7 @@ pub enum Action {
 
     P2pPeerEvent(P2pPeerEvent),
     PeerTryWrite(PeerTryWriteAction),
+    PeerTryRead(PeerTryReadAction),
 
     PeerHandshakingInit(PeerHandshakingInitAction),
 
@@ -37,4 +42,9 @@ pub enum Action {
     PeerConnectionMessagePartWritten(PeerConnectionMessagePartWrittenAction),
     PeerConnectionMessageWriteError(PeerConnectionMessageWriteErrorAction),
     PeerConnectionMessageWriteSuccess(PeerConnectionMessageWriteSuccessAction),
+
+    PeerConnectionMessageReadInit(PeerConnectionMessageReadInitAction),
+    PeerConnectionMessagePartRead(PeerConnectionMessagePartReadAction),
+    PeerConnectionMessageReadError(PeerConnectionMessageReadErrorAction),
+    PeerConnectionMessageReadSuccess(PeerConnectionMessageReadSuccessAction),
 }
