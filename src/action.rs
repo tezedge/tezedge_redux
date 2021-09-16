@@ -1,6 +1,6 @@
 use derive_more::From;
 
-use crate::event::P2pPeerEvent;
+use crate::event::{P2pPeerEvent, WakeupEvent};
 use crate::peer::connecting::{
     PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
@@ -19,6 +19,11 @@ use crate::peers::dns_lookup::{
     PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
 };
+use crate::storage::{
+    StorageBlockHeaderPutNextInitAction, StorageBlockHeaderPutNextPendingAction,
+    StorageBlockHeadersPutAction, StorageRequestErrorAction, StorageRequestFinishAction,
+    StorageRequestInitAction, StorageRequestPendingAction, StorageRequestSuccessAction,
+};
 
 #[derive(From, Debug, Clone)]
 pub enum Action {
@@ -33,6 +38,8 @@ pub enum Action {
     PeerConnectionSuccess(PeerConnectionSuccessAction),
 
     P2pPeerEvent(P2pPeerEvent),
+    WakeupEvent(WakeupEvent),
+
     PeerTryWrite(PeerTryWriteAction),
     PeerTryRead(PeerTryReadAction),
 
@@ -47,4 +54,14 @@ pub enum Action {
     PeerConnectionMessagePartRead(PeerConnectionMessagePartReadAction),
     PeerConnectionMessageReadError(PeerConnectionMessageReadErrorAction),
     PeerConnectionMessageReadSuccess(PeerConnectionMessageReadSuccessAction),
+
+    StorageBlockHeadersPut(StorageBlockHeadersPutAction),
+    StorageBlockHeaderPutNextInit(StorageBlockHeaderPutNextInitAction),
+    StorageBlockHeaderPutNextPending(StorageBlockHeaderPutNextPendingAction),
+
+    StorageRequestInit(StorageRequestInitAction),
+    StorageRequestPending(StorageRequestPendingAction),
+    StorageRequestError(StorageRequestErrorAction),
+    StorageRequestSuccess(StorageRequestSuccessAction),
+    StorageRequestFinish(StorageRequestFinishAction),
 }

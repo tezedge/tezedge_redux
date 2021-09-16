@@ -8,7 +8,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use crate::event::{Event, P2pPeerEvent, P2pPeerUnknownEvent, P2pServerEvent};
+use crate::event::{Event, P2pPeerEvent, P2pPeerUnknownEvent, P2pServerEvent, WakeupEvent};
 
 pub type MioInternalEvent = mio::event::Event;
 pub type MioInternalEventsContainer = mio::Events;
@@ -93,7 +93,7 @@ impl MioServiceDefault {
 
     pub fn transform_event(&mut self, event: &mio::event::Event) -> Event {
         if event.token() == MIO_WAKE_TOKEN {
-            Event::Waker
+            WakeupEvent {}.into()
         } else if event.token() == MIO_SERVER_TOKEN {
             P2pServerEvent {}.into()
         } else {

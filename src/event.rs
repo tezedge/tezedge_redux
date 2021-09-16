@@ -10,7 +10,7 @@ use std::{net::SocketAddr, time::Instant};
 #[derive(From, Debug, Clone)]
 pub enum Event {
     /// `mio::Waker` has been used to wake up `mio::Poll::poll`.
-    Waker,
+    Wakeup(WakeupEvent),
 
     /// Event for P2p listening socket.
     ///
@@ -25,6 +25,9 @@ pub enum Event {
     /// be impossible!
     P2pPeerUnknown(P2pPeerUnknownEvent),
 }
+
+#[derive(Debug, Clone)]
+pub struct WakeupEvent;
 
 #[derive(Debug, Clone)]
 pub struct P2pServerEvent;
