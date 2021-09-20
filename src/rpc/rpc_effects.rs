@@ -1,7 +1,7 @@
 use redux_rs::Store;
 
 use crate::service::rpc_service::RpcResponse;
-use crate::service::{RpcService, Service};
+use crate::service::{RpcService, Service, StorageService};
 use crate::{action::Action, State};
 
 pub fn rpc_effects<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
@@ -11,6 +11,9 @@ pub fn rpc_effects<S: Service>(store: &mut Store<State, S, Action>, action: &Act
                 match msg {
                     RpcResponse::GetCurrentGlobalState { channel } => {
                         channel.send(store.state.get().clone());
+                    }
+                    RpcResponse::GetActions { channel } => {
+                        channel.send(store.service.storage().actions_get());
                     }
                 }
             }

@@ -27,6 +27,7 @@ use crate::storage::{
 };
 
 #[derive(From, Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", content = "content")]
 pub enum Action {
     PeersDnsLookupInit(PeersDnsLookupInitAction),
     PeersDnsLookupError(PeersDnsLookupErrorAction),

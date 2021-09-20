@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 use std::{convert::Infallible, future::Future};
 
-use crate::{request::RequestId, State};
+use crate::{action::Action, request::RequestId, State};
 
 use super::service_channel::{
     worker_channel, RequestSendError, ResponseTryRecvError, ServiceWorkerRequester,
@@ -24,17 +24,33 @@ pub enum RpcResponse {
     GetCurrentGlobalState {
         channel: tokio::sync::oneshot::Sender<State>,
     },
+    GetActions {
+        channel: tokio::sync::oneshot::Sender<Vec<Action>>,
+    },
 }
+
+type ServiceResult = Result<Response<Body>, Box<dyn std::error::Error + Sync + Send>>;
 
 #[derive(Debug)]
 pub struct RpcServiceDefault {
     worker_channel: ServiceWorkerRequester<(), RpcResponse>,
 }
 
+/// Generate 404 response
+fn not_found() -> ServiceResult {
+    Ok(Response::builder()
+        .status(StatusCode::from_u16(404)?)
+        .header(hyper::header::CONTENT_TYPE, "text/plain")
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
+        .body(Body::empty())?)
+}
+
 impl RpcServiceDefault {
-    async fn handle_get_global_state(
+    async fn handle_global_state_get(
         mut sender: ServiceWorkerResponderSender<RpcResponse>,
-    ) -> Result<Response<Body>, Infallible> {
+    ) -> ServiceResult {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         sender.send(RpcResponse::GetCurrentGlobalState { channel: tx });
@@ -67,6 +83,43 @@ impl RpcServiceDefault {
 
         Ok(Response::new(Body::from(json_str)))
     }
+
+    async fn handle_actions_get(
+        mut sender: ServiceWorkerResponderSender<RpcResponse>,
+    ) -> ServiceResult {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+
+        sender.send(RpcResponse::GetActions { channel: tx });
+        let state = match rx.await {
+            Ok(v) => v,
+            Err(_) => {
+                return Ok(Response::new(Body::from(
+                    "request for current state discarded!",
+                )))
+            }
+        };
+
+        let json_str = match serde_json::to_string(&state) {
+            Ok(v) => v,
+            Err(err) => {
+                return Ok(Response::builder()
+                    .status(StatusCode::from_u16(500).unwrap())
+                    .header(hyper::header::CONTENT_TYPE, "text/plain")
+                    .header(hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
+                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
+                    .header(hyper::header::TRANSFER_ENCODING, "chunked")
+                    .body(Body::from(format!(
+                        "serializing state failed! Error: {:?}",
+                        err
+                    )))
+                    .unwrap());
+            }
+        };
+
+        Ok(Response::new(Body::from(json_str)))
+    }
+
     fn run_worker(
         bind_address: SocketAddr,
         mut channel: ServiceWorkerResponder<(), RpcResponse>,
@@ -76,8 +129,18 @@ impl RpcServiceDefault {
         hyper::Server::bind(&bind_address).serve(make_service_fn(move |_| {
             let sender = sender.clone();
             async move {
-                Ok::<_, hyper::Error>(service_fn(move |_req: Request<Body>| {
-                    Self::handle_get_global_state(sender.clone())
+                Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| {
+                    let sender = sender.clone();
+                    async move {
+                        let path = req.uri().path();
+                        if path == "/state" {
+                            Self::handle_global_state_get(sender).await
+                        } else if path == "/actions" {
+                            Self::handle_actions_get(sender).await
+                        } else {
+                            not_found()
+                        }
+                    }
                 }))
             }
         }))

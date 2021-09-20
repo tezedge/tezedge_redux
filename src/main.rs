@@ -44,7 +44,7 @@ use peers::dns_lookup::{
 
 pub mod storage;
 use crate::rpc::rpc_effects;
-use crate::service::RpcServiceDefault;
+use crate::service::{RpcServiceDefault, StorageService};
 use crate::storage::{StorageBlockHeadersPutAction, StorageState};
 
 pub mod rpc;
@@ -194,6 +194,9 @@ fn main() {
     let mut store = Store::new(reducer, service, State::new(default_config()));
 
     store.add_middleware(log_middleware);
+    store.add_middleware(|store, action| {
+        store.service.storage().action_store(action);
+    });
 
     // add effects middleware
     store.add_middleware(|store, action| {
