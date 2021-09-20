@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::io;
 use std::net::SocketAddr;
 
@@ -8,12 +9,12 @@ use tezos_messages::p2p::encoding::version::NetworkVersion;
 use crate::io_error_kind::IOErrorKind;
 use crate::Port;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerConnectionMessageReadInitAction {
     pub address: SocketAddr,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerConnectionMessagePartReadAction {
     pub address: SocketAddr,
     // TODO: can be optimized by using `Cow<'a, [u8]>` instead to avoid allocation.
@@ -21,13 +22,13 @@ pub struct PeerConnectionMessagePartReadAction {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerConnectionMessageReadErrorAction {
     pub address: SocketAddr,
     pub error: IOErrorKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerConnectionMessageReadSuccessAction {
     pub address: SocketAddr,
     pub port: Port,

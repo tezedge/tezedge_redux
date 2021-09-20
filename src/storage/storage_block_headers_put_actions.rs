@@ -1,16 +1,18 @@
+use serde::{Deserialize, Serialize};
+
 use storage::BlockHeaderWithHash;
 
 use crate::request::RequestId;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageBlockHeadersPutAction {
     pub block_headers: Vec<BlockHeaderWithHash>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageBlockHeaderPutNextInitAction;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageBlockHeaderPutNextPendingAction {
     pub req_id: RequestId,
 }

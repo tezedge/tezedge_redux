@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use derive_more::From;
+use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, time::Instant};
 
 use crate::peer::PeerToken;
@@ -9,7 +10,7 @@ use crate::peer::PeerToken;
 /// Event coming from `Manager`.
 ///
 /// Each event updates internal logical clock and also triggers some actions.
-#[derive(From, Debug, Clone)]
+#[derive(From, Serialize, Deserialize, Debug, Clone)]
 pub enum Event {
     /// `mio::Waker` has been used to wake up `mio::Poll::poll`.
     Wakeup(WakeupEvent),
@@ -28,13 +29,13 @@ pub enum Event {
     P2pPeerUnknown(P2pPeerUnknownEvent),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WakeupEvent;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct P2pServerEvent;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct P2pPeerEvent {
     pub token: PeerToken,
 
@@ -77,7 +78,7 @@ impl P2pPeerEvent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct P2pPeerUnknownEvent {
     pub token: PeerToken,
 

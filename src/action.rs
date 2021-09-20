@@ -1,4 +1,5 @@
 use derive_more::From;
+use serde::{Deserialize, Serialize};
 
 use crate::event::{P2pPeerEvent, WakeupEvent};
 use crate::peer::connecting::{
@@ -25,7 +26,7 @@ use crate::storage::{
     StorageRequestInitAction, StorageRequestPendingAction, StorageRequestSuccessAction,
 };
 
-#[derive(From, Debug, Clone)]
+#[derive(From, Serialize, Deserialize, Debug, Clone)]
 pub enum Action {
     PeersDnsLookupInit(PeersDnsLookupInitAction),
     PeersDnsLookupError(PeersDnsLookupErrorAction),

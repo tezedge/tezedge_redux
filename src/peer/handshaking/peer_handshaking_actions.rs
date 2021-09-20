@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::io;
 use std::net::SocketAddr;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerHandshakingInitAction {
     pub address: SocketAddr,
 }
