@@ -1,6 +1,9 @@
 use std::io;
 use std::net::SocketAddr;
 
+use crate::io_error_kind::IOErrorKind;
+use crate::peer::PeerToken;
+
 #[derive(Debug, Clone)]
 pub struct PeerConnectionInitAction {
     pub address: SocketAddr,
@@ -9,13 +12,13 @@ pub struct PeerConnectionInitAction {
 #[derive(Debug, Clone)]
 pub struct PeerConnectionPendingAction {
     pub address: SocketAddr,
-    pub token: mio::Token,
+    pub token: PeerToken,
 }
 
 #[derive(Debug, Clone)]
 pub struct PeerConnectionErrorAction {
     pub address: SocketAddr,
-    pub error: io::ErrorKind,
+    pub error: IOErrorKind,
 }
 
 #[derive(Debug, Clone)]

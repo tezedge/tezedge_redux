@@ -12,11 +12,15 @@ pub use mio_service::{MioService, MioServiceDefault};
 pub mod storage_service;
 pub use storage_service::{StorageService, StorageServiceDefault};
 
+pub mod rpc_service;
+pub use rpc_service::{RpcService, RpcServiceDefault};
+
 pub trait Service {
     type Randomness: RandomnessService;
     type Dns: DnsService;
     type Mio: MioService;
     type Storage: StorageService;
+    type Rpc: RpcService;
 
     fn randomness(&mut self) -> &mut Self::Randomness;
 
@@ -25,6 +29,8 @@ pub trait Service {
     fn mio(&mut self) -> &mut Self::Mio;
 
     fn storage(&mut self) -> &mut Self::Storage;
+
+    fn rpc(&mut self) -> &mut Self::Rpc;
 }
 
 pub struct ServiceDefault {
@@ -32,6 +38,7 @@ pub struct ServiceDefault {
     pub dns: DnsServiceDefault,
     pub mio: MioServiceDefault,
     pub storage: StorageServiceDefault,
+    pub rpc: RpcServiceDefault,
 }
 
 impl Service for ServiceDefault {
@@ -39,6 +46,7 @@ impl Service for ServiceDefault {
     type Dns = DnsServiceDefault;
     type Mio = MioServiceDefault;
     type Storage = StorageServiceDefault;
+    type Rpc = RpcServiceDefault;
 
     fn randomness(&mut self) -> &mut Self::Randomness {
         &mut self.randomness
@@ -54,5 +62,9 @@ impl Service for ServiceDefault {
 
     fn storage(&mut self) -> &mut Self::Storage {
         &mut self.storage
+    }
+
+    fn rpc(&mut self) -> &mut Self::Rpc {
+        &mut self.rpc
     }
 }

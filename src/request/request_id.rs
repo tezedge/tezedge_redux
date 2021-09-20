@@ -1,4 +1,6 @@
-#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone, Copy)]
 pub struct RequestId {
     locator: usize,
     counter: usize,

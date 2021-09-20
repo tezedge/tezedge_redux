@@ -70,7 +70,7 @@ where
                             MessageWriteState::Pending { written } => &conn_msg.raw()[*written..],
                             _ => return,
                         };
-                        match peer_stream.write(conn_msg.raw()) {
+                        match peer_stream.write(bytes) {
                             Ok(written) => {
                                 if written == 0 {
                                     return;
@@ -91,7 +91,7 @@ where
                                 store.dispatch(
                                     PeerConnectionMessageWriteErrorAction {
                                         address: action.address,
-                                        error: err.kind(),
+                                        error: err.kind().into(),
                                     }
                                     .into(),
                                 );
@@ -164,9 +164,9 @@ where
                         Ok(read_bytes) => {
                             dispatch_success(store, buf[..read_bytes].to_vec());
                         }
-                        Err(err) => match dbg!(err.kind()) {
+                        Err(err) => match err.kind() {
                             std::io::ErrorKind::WouldBlock => return,
-                            err => dispatch_error(store, err),
+                            err => dispatch_error(store, err.into()),
                         },
                     }
                 }

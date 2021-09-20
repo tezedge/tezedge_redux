@@ -2,6 +2,8 @@ use std::net::SocketAddr;
 
 use crate::Port;
 
+use super::DnsLookupError;
+
 #[derive(Debug, Clone)]
 pub struct PeersDnsLookupInitAction {
     pub address: String,
@@ -10,7 +12,7 @@ pub struct PeersDnsLookupInitAction {
 
 #[derive(Debug, Clone)]
 pub struct PeersDnsLookupErrorAction {
-    pub error: dns_lookup::LookupErrorKind,
+    pub error: DnsLookupError,
 }
 
 #[derive(Debug, Clone)]

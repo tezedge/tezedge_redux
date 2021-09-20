@@ -4,6 +4,8 @@
 use derive_more::From;
 use std::{net::SocketAddr, time::Instant};
 
+use crate::peer::PeerToken;
+
 /// Event coming from `Manager`.
 ///
 /// Each event updates internal logical clock and also triggers some actions.
@@ -34,7 +36,7 @@ pub struct P2pServerEvent;
 
 #[derive(Debug, Clone)]
 pub struct P2pPeerEvent {
-    pub token: mio::Token,
+    pub token: PeerToken,
 
     pub address: SocketAddr,
 
@@ -50,7 +52,7 @@ pub struct P2pPeerEvent {
 
 impl P2pPeerEvent {
     #[inline(always)]
-    pub fn token(&self) -> mio::Token {
+    pub fn token(&self) -> PeerToken {
         self.token
     }
 
@@ -77,7 +79,7 @@ impl P2pPeerEvent {
 
 #[derive(Debug, Clone)]
 pub struct P2pPeerUnknownEvent {
-    pub token: mio::Token,
+    pub token: PeerToken,
 
     /// Peer's stream is ready for reading.
     pub is_readable: bool,

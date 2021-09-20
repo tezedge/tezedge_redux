@@ -1,9 +1,13 @@
+use serde::{Deserialize, Serialize};
 use std::io;
 
-#[derive(Debug, Clone)]
+use crate::io_error_kind::IOErrorKind;
+use crate::peer::PeerToken;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PeerConnecting {
     Idle,
-    Pending { token: mio::Token },
-    Success { token: mio::Token },
-    Error { error: io::ErrorKind },
+    Pending { token: PeerToken },
+    Success { token: PeerToken },
+    Error { error: IOErrorKind },
 }

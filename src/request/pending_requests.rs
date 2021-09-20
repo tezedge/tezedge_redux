@@ -1,14 +1,15 @@
+use serde::{Deserialize, Serialize};
 use slab::Slab;
 
 use super::RequestId;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct PendingRequest<Request> {
     counter: usize,
     request: Request,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PendingRequests<Request> {
     list: Slab<PendingRequest<Request>>,
     counter: usize,

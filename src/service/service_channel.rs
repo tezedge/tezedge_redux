@@ -91,6 +91,36 @@ impl<Req, Resp> ServiceWorkerRequester<Req, Resp> {
     }
 }
 
+#[inline(always)]
+fn responder_send<T>(
+    sender: &mpsc::Sender<T>,
+    mio_waker: &Arc<mio::Waker>,
+    msg: T,
+) -> Result<(), ResponseSendError<T>> {
+    let _ = mio_waker.wake();
+    Ok(sender.send(msg)?)
+}
+
+pub struct ServiceWorkerResponderSender<Resp> {
+    sender: mpsc::Sender<Resp>,
+    mio_waker: Arc<mio::Waker>,
+}
+
+impl<Resp> ServiceWorkerResponderSender<Resp> {
+    pub fn send(&mut self, resp: Resp) -> Result<(), ResponseSendError<Resp>> {
+        responder_send(&self.sender, &self.mio_waker, resp)
+    }
+}
+
+impl<Resp> Clone for ServiceWorkerResponderSender<Resp> {
+    fn clone(&self) -> Self {
+        Self {
+            sender: self.sender.clone(),
+            mio_waker: self.mio_waker.clone(),
+        }
+    }
+}
+
 /// Responder half of the channel.
 ///
 /// It is used by worker to send responses to the requester.
@@ -101,9 +131,15 @@ pub struct ServiceWorkerResponder<Req, Resp> {
 }
 
 impl<Req, Resp> ServiceWorkerResponder<Req, Resp> {
+    pub fn sender(&self) -> ServiceWorkerResponderSender<Resp> {
+        ServiceWorkerResponderSender {
+            sender: self.sender.clone(),
+            mio_waker: self.mio_waker.clone(),
+        }
+    }
+
     pub fn send(&mut self, resp: Resp) -> Result<(), ResponseSendError<Resp>> {
-        let _ = self.mio_waker.wake();
-        Ok(self.sender.send(resp)?)
+        responder_send(&self.sender, &self.mio_waker, resp)
     }
 
     pub fn recv(&mut self) -> Result<Req, RequestRecvError> {

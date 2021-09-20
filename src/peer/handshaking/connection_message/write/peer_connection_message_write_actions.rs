@@ -3,6 +3,8 @@ use std::net::SocketAddr;
 
 use tezos_messages::p2p::binary_message::BinaryChunk;
 
+use crate::io_error_kind::IOErrorKind;
+
 #[derive(Debug, Clone)]
 pub struct PeerConnectionMessageWriteInitAction {
     pub address: SocketAddr,
@@ -20,7 +22,7 @@ pub struct PeerConnectionMessagePartWrittenAction {
 #[derive(Debug, Clone)]
 pub struct PeerConnectionMessageWriteErrorAction {
     pub address: SocketAddr,
-    pub error: io::ErrorKind,
+    pub error: IOErrorKind,
 }
 
 #[derive(Debug, Clone)]

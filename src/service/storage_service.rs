@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
@@ -23,7 +24,7 @@ pub trait StorageService {
 type StorageWorkerRequester = ServiceWorkerRequester<StorageRequest, StorageResponse>;
 type StorageWorkerResponder = ServiceWorkerResponder<StorageRequest, StorageResponse>;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageErrorTmp;
 
 impl From<StorageError> for StorageErrorTmp {
@@ -32,22 +33,22 @@ impl From<StorageError> for StorageErrorTmp {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageRequestPayload {
     BlockHeaderWithHashPut(BlockHeaderWithHash),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageResponseSuccess {
     BlockHeaderWithHashPutSuccess(bool),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageResponseError {
     BlockHeaderWithHashPutError(StorageErrorTmp),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageRequest {
     pub id: RequestId,
     pub payload: StorageRequestPayload,
@@ -59,7 +60,7 @@ impl StorageRequest {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageResponse {
     pub req_id: RequestId,
     pub result: Result<StorageResponseSuccess, StorageResponseError>,

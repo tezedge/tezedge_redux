@@ -1,6 +1,7 @@
 use ::storage::BlockHeaderWithHash;
 use crypto::hash::BlockHash;
 use redux_rs::{combine_reducers, Reducer, Store};
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
@@ -10,6 +11,8 @@ use std::{
 };
 use tezos_messages::p2p::binary_message::{BinaryRead, MessageHash};
 use tezos_messages::p2p::encoding::block_header::{BlockHeader, BlockHeaderBuilder, Fitness};
+
+pub mod io_error_kind;
 
 pub mod event;
 use event::Event;
@@ -40,7 +43,11 @@ use peers::dns_lookup::{
 };
 
 pub mod storage;
+use crate::rpc::rpc_effects;
+use crate::service::RpcServiceDefault;
 use crate::storage::{StorageBlockHeadersPutAction, StorageState};
+
+pub mod rpc;
 
 pub mod service;
 use service::mio_service::MioInternalEventsContainer;
@@ -60,7 +67,7 @@ use crate::storage::{
 
 pub type Port = u16;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct State {
     pub config: Config,
     pub peers: BTreeMap<SocketAddr, Peer>,
@@ -162,12 +169,14 @@ fn main() {
 
     let mio_service = MioServiceDefault::new(listen_address);
     let storage_service = StorageServiceDefault::init(mio_service.waker(), init_storage());
+    let rpc_service = RpcServiceDefault::init(mio_service.waker());
 
     let service = ServiceDefault {
         randomness: RandomnessServiceDefault::default(),
         dns: DnsServiceDefault::default(),
         mio: mio_service,
         storage: storage_service,
+        rpc: rpc_service,
     };
 
     let reducer: Reducer<State, Action> = combine_reducers!(
@@ -197,6 +206,8 @@ fn main() {
 
         storage_block_headers_put_effects(store, action);
         storage_request_effects(store, action);
+
+        rpc_effects(store, action);
     });
 
     store.dispatch(

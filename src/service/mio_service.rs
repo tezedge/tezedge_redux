@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::event::{Event, P2pPeerEvent, P2pPeerUnknownEvent, P2pServerEvent, WakeupEvent};
+use crate::peer::PeerToken;
 
 pub type MioInternalEvent = mio::event::Event;
 pub type MioInternalEventsContainer = mio::Events;
@@ -32,12 +33,12 @@ pub trait MioService {
     fn stop_listening_to_incoming_peer_connections(&mut self);
     fn accept_incoming_peer_connection(
         &mut self,
-    ) -> Option<(mio::Token, &mut MioPeer<Self::PeerStream>)>;
+    ) -> Option<(PeerToken, &mut MioPeer<Self::PeerStream>)>;
 
-    fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<mio::Token>;
-    fn peer_disconnect(&mut self, token: mio::Token);
+    fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<PeerToken>;
+    fn peer_disconnect(&mut self, token: PeerToken);
 
-    fn get_peer(&mut self, token: mio::Token) -> Option<&mut MioPeer<Self::PeerStream>>;
+    fn get_peer(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>>;
 }
 
 pub struct MioPeer<Stream> {
@@ -98,10 +99,11 @@ impl MioServiceDefault {
             P2pServerEvent {}.into()
         } else {
             let is_closed = event.is_error() || event.is_read_closed() || event.is_write_closed();
+            let peer_token = PeerToken::new_unchecked(event.token().0);
 
-            match self.get_peer(event.token()) {
+            match self.get_peer(peer_token) {
                 Some(peer) => P2pPeerEvent {
-                    token: event.token(),
+                    token: peer_token,
                     address: peer.address,
 
                     is_readable: event.is_readable(),
@@ -110,7 +112,7 @@ impl MioServiceDefault {
                 }
                 .into(),
                 None => P2pPeerUnknownEvent {
-                    token: event.token(),
+                    token: peer_token,
 
                     is_readable: event.is_readable(),
                     is_writable: event.is_writable(),
@@ -168,7 +170,7 @@ impl MioService for MioServiceDefault {
 
     fn accept_incoming_peer_connection(
         &mut self,
-    ) -> Option<(mio::Token, &mut MioPeer<Self::PeerStream>)> {
+    ) -> Option<(PeerToken, &mut MioPeer<Self::PeerStream>)> {
         let server = &mut self.server;
         let poll = &mut self.poll;
         let peers = &mut self.peers;
@@ -188,7 +190,7 @@ impl MioService for MioServiceDefault {
                     match registered_poll {
                         Ok(_) => {
                             let peer = peer_entry.insert(MioPeer::new(address.into(), stream));
-                            Some((token, peer))
+                            Some((PeerToken::new_unchecked(token.0), peer))
                         }
                         Err(err) => {
                             eprintln!("error while registering poll: {:?}", err);
@@ -211,7 +213,7 @@ impl MioService for MioServiceDefault {
         }
     }
 
-    fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<mio::Token> {
+    fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<PeerToken> {
         let poll = &mut self.poll;
         let peers = &mut self.peers;
 
@@ -229,21 +231,21 @@ impl MioService for MioServiceDefault {
                 let peer = MioPeer::new(address.clone(), stream);
 
                 peer_entry.insert(peer);
-                Ok(token)
+                Ok(PeerToken::new_unchecked(token.0))
             }
             Err(err) => Err(err),
         }
     }
 
-    fn peer_disconnect(&mut self, token: mio::Token) {
-        let index = token.into();
+    fn peer_disconnect(&mut self, token: PeerToken) {
+        let index = token.index();
         if self.peers.contains(index) {
             let mut peer = self.peers.remove(index);
             let _ = self.poll.registry().deregister(&mut peer.stream);
         }
     }
 
-    fn get_peer(&mut self, token: mio::Token) -> Option<&mut MioPeer<Self::PeerStream>> {
-        self.peers.get_mut(token.into())
+    fn get_peer(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>> {
+        self.peers.get_mut(token.index())
     }
 }

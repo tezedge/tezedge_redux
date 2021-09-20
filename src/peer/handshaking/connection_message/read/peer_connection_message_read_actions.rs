@@ -5,6 +5,7 @@ use crypto::crypto_box::PublicKey;
 use tezos_messages::p2p::encoding::ack::NackMotive;
 use tezos_messages::p2p::encoding::version::NetworkVersion;
 
+use crate::io_error_kind::IOErrorKind;
 use crate::Port;
 
 #[derive(Debug, Clone)]
@@ -23,7 +24,7 @@ pub struct PeerConnectionMessagePartReadAction {
 #[derive(Debug, Clone)]
 pub struct PeerConnectionMessageReadErrorAction {
     pub address: SocketAddr,
-    pub error: io::ErrorKind,
+    pub error: IOErrorKind,
 }
 
 #[derive(Debug, Clone)]

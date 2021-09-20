@@ -1,21 +1,23 @@
+use serde::{Deserialize, Serialize};
 use std::io;
 
 use crypto::crypto_box::PublicKey;
 use shell_state::networking::chunking::ChunkReadBuffer;
-use shell_state::networking::peer::PeerCrypto;
 use tezos_messages::p2p::binary_message::BinaryChunk;
 use tezos_messages::p2p::encoding::ack::NackMotive;
 use tezos_messages::p2p::encoding::prelude::{AckMessage, MetadataMessage, NetworkVersion};
 
+use crate::io_error_kind::IOErrorKind;
+use crate::peer::{PeerCrypto, PeerToken};
 use crate::Port;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MessageWriteState {
     Idle,
     Pending { written: usize },
     Success,
     // TODO: use custom error instead.
-    Error { error: io::ErrorKind },
+    Error { error: IOErrorKind },
 }
 
 impl MessageWriteState {
@@ -30,16 +32,16 @@ impl MessageWriteState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MessageReadState<M> {
     Idle,
     Pending { buffer: ChunkReadBuffer },
     Success { message: M },
     // TODO: use custom error instead.
-    Error { error: io::ErrorKind },
+    Error { error: IOErrorKind },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConnectionMessageDataReceived {
     pub port: Port,
     pub compatible_version: Option<NetworkVersion>,
@@ -47,7 +49,7 @@ pub struct ConnectionMessageDataReceived {
     pub encoded: BinaryChunk,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PeerHandshakingStatus {
     Init,
     ConnectionMessageWrite {
@@ -105,9 +107,9 @@ pub enum PeerHandshakingStatus {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerHandshaking {
-    pub token: mio::Token,
+    pub token: PeerToken,
     pub status: PeerHandshakingStatus,
     pub incoming: bool,
 }

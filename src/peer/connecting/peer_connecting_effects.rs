@@ -22,7 +22,7 @@ where
                 Ok(token) => PeerConnectionPendingAction { address, token }.into(),
                 Err(error) => PeerConnectionErrorAction {
                     address,
-                    error: error.kind(),
+                    error: error.kind().into(),
                 }
                 .into(),
             });

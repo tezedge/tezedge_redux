@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 use storage::BlockHeaderWithHash;
@@ -7,7 +8,7 @@ use crate::service::storage_service::{
     StorageRequestPayload, StorageResponseError, StorageResponseSuccess,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageBlockHeaderPutState {
     Idle(BlockHeaderWithHash),
     Init {
@@ -16,7 +17,7 @@ pub enum StorageBlockHeaderPutState {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageRequestStatus {
     Idle,
     Pending,
@@ -24,13 +25,13 @@ pub enum StorageRequestStatus {
     Success(StorageResponseSuccess),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageRequestState {
     pub status: StorageRequestStatus,
     pub payload: StorageRequestPayload,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageState {
     pub block_headers_put: VecDeque<StorageBlockHeaderPutState>,
     pub requests: PendingRequests<StorageRequestState>,

@@ -16,7 +16,7 @@ pub fn peers_dns_lookup_effects<S: Service>(store: &mut Store<State, S, Action>,
                 .resolve_dns_name_to_peer_address(&action.address, action.port);
             store.dispatch(match result {
                 Ok(addresses) => PeersDnsLookupSuccessAction { addresses }.into(),
-                Err(err) => PeersDnsLookupErrorAction { error: err.kind() }.into(),
+                Err(err) => PeersDnsLookupErrorAction { error: err.into() }.into(),
             });
         }
         Action::PeersDnsLookupSuccess(_) => {

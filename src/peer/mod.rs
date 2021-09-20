@@ -1,6 +1,12 @@
 pub mod connecting;
 pub mod handshaking;
 
+mod peer_token;
+pub use peer_token::*;
+
+mod peer_crypto;
+pub use peer_crypto::*;
+
 mod peer_state;
 pub use peer_state::*;
 

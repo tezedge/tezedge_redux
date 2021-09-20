@@ -1,4 +1,5 @@
 use hex::FromHex;
+use serde::{Deserialize, Serialize};
 
 use crypto::{
     crypto_box::{CryptoKey, PublicKey, SecretKey},
@@ -39,7 +40,7 @@ pub fn identity_1() -> Identity {
     )
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub port: Port,
     pub disable_mempool: bool,
