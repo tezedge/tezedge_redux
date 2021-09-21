@@ -48,6 +48,21 @@ fn not_found() -> ServiceResult {
         .body(Body::empty())?)
 }
 
+/// Function to generate JSON response from serializable object
+fn make_json_response<T: serde::Serialize>(content: &T) -> ServiceResult {
+    Ok(Response::builder()
+        .header(hyper::header::CONTENT_TYPE, "application/json")
+        // TODO: add to config
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
+        .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
+        .header(
+            hyper::header::ACCESS_CONTROL_ALLOW_METHODS,
+            "GET, POST, OPTIONS, PUT",
+        )
+        .body(Body::from(serde_json::to_string(content)?))?)
+}
+
 impl RpcServiceDefault {
     async fn handle_global_state_get(
         mut sender: ServiceWorkerResponderSender<RpcResponse>,
@@ -64,25 +79,7 @@ impl RpcServiceDefault {
             }
         };
 
-        let json_str = match serde_json::to_string(&state) {
-            Ok(v) => v,
-            Err(err) => {
-                return Ok(Response::builder()
-                    .status(StatusCode::from_u16(500).unwrap())
-                    .header(hyper::header::CONTENT_TYPE, "text/plain")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
-                    .header(hyper::header::TRANSFER_ENCODING, "chunked")
-                    .body(Body::from(format!(
-                        "serializing state failed! Error: {:?}",
-                        err
-                    )))
-                    .unwrap());
-            }
-        };
-
-        Ok(Response::new(Body::from(json_str)))
+        make_json_response(&state)
     }
 
     async fn handle_actions_get(
@@ -91,34 +88,16 @@ impl RpcServiceDefault {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         sender.send(RpcResponse::GetActions { channel: tx });
-        let state = match rx.await {
+        let actions = match rx.await {
             Ok(v) => v,
             Err(_) => {
                 return Ok(Response::new(Body::from(
-                    "request for current state discarded!",
+                    "request for actions discarded!",
                 )))
             }
         };
 
-        let json_str = match serde_json::to_string(&state) {
-            Ok(v) => v,
-            Err(err) => {
-                return Ok(Response::builder()
-                    .status(StatusCode::from_u16(500).unwrap())
-                    .header(hyper::header::CONTENT_TYPE, "text/plain")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
-                    .header(hyper::header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
-                    .header(hyper::header::TRANSFER_ENCODING, "chunked")
-                    .body(Body::from(format!(
-                        "serializing state failed! Error: {:?}",
-                        err
-                    )))
-                    .unwrap());
-            }
-        };
-
-        Ok(Response::new(Body::from(json_str)))
+        make_json_response(&actions)
     }
 
     fn run_worker(
