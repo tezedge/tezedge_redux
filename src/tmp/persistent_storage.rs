@@ -9,10 +9,7 @@ use std::sync::Arc;
 
 use storage::{
     database::tezedge_database::{TezedgeDatabase, TezedgeDatabaseBackendConfiguration},
-    initializer::{
-        DbsRocksDbTableInitializer, GlobalRocksDbCacheHolder, MainChain, RocksDbCache,
-        RocksDbColumnFactory, RocksDbConfig,
-    },
+    initializer::{DbsRocksDbTableInitializer, RocksDbCache, RocksDbColumnFactory, RocksDbConfig},
     persistent::{
         database::open_kv, open_cl, open_main_db, sequence::Sequences, CommitLogSchema, DBError,
         DbConfiguration,
@@ -21,8 +18,9 @@ use storage::{
 };
 
 use crypto::hash::BlockHash;
-use tezos_messages::p2p::binary_message::{BinaryRead, MessageHash};
-use tezos_messages::p2p::encoding::block_header::{BlockHeader, BlockHeaderBuilder, Fitness};
+use tezos_messages::p2p::binary_message::MessageHash;
+use tezos_messages::p2p::encoding::block_header::Fitness;
+use tezos_messages::p2p::encoding::prelude::BlockHeaderBuilder;
 
 pub fn initialize_rocksdb<Factory: RocksDbColumnFactory>(
     config: &RocksDbConfig<Factory>,
