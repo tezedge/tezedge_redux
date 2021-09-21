@@ -1,9 +1,11 @@
+use redux_rs::ActionWithId;
+
 use crate::{action::Action, State};
 
 use super::StorageRequestStatus;
 
-pub fn storage_request_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn storage_request_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::StorageRequestPending(action) => {
             if let Some(req) = state.storage.requests.get_mut(action.req_id) {
                 match &req.status {

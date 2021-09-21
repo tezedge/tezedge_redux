@@ -1,3 +1,5 @@
+use redux_rs::ActionWithId;
+
 use crate::{
     action::Action,
     peer::{Peer, PeerStatus},
@@ -6,8 +8,8 @@ use crate::{
 
 use super::{PeersDnsLookupState, PeersDnsLookupStatus};
 
-pub fn peers_dns_lookup_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn peers_dns_lookup_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::PeersDnsLookupInit(action) => {
             state.peers_dns_lookup = Some(PeersDnsLookupState {
                 address: action.address.clone(),

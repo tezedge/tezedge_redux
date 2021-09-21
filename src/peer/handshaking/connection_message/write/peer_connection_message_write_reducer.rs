@@ -1,9 +1,10 @@
-use crate::{action::Action, peer::PeerStatus, State};
+use redux_rs::ActionWithId;
 
+use crate::{action::Action, peer::PeerStatus, State};
 use crate::peer::handshaking::{MessageWriteState, PeerHandshakingStatus};
 
-pub fn peer_connection_message_write_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn peer_connection_message_write_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::PeerConnectionMessageWriteInit(action) => {
             if let Some(peer) = state.peers.get_mut(&action.address) {
                 match &mut peer.status {

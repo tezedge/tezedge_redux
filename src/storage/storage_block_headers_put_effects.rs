@@ -1,5 +1,5 @@
 use bytes::Buf;
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 use std::io::{Read, Write};
 use tezos_messages::p2p::binary_message::CONTENT_LENGTH_FIELD_BYTES;
 
@@ -11,11 +11,11 @@ use crate::action::Action;
 use crate::service::{MioService, Service};
 use crate::State;
 
-pub fn storage_block_headers_put_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
+pub fn storage_block_headers_put_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
 where
     S: Service,
 {
-    match action {
+    match &action.action {
         Action::StorageBlockHeadersPut(_) => {
             store.dispatch(StorageBlockHeaderPutNextInitAction {}.into());
         }

@@ -31,7 +31,7 @@ strum = "0.20"
 strum_macros = "0.20"
 zstd = "0.5.3+zstd.1.4.5"
 
-redux-rs = { git = "https://github.com/binier/redux-rs.git" }
+redux-rs = { git = "https://github.com/binier/redux-rs.git", features = ["serde"] }
 
 crypto = { git = "https://github.com/binier/tezedge.git", branch = "p2p-simulator-refactor" }
 tezos_encoding = { git = "https://github.com/binier/tezedge.git", branch = "p2p-simulator-refactor" }

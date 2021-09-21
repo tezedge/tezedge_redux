@@ -1,9 +1,11 @@
+use redux_rs::ActionWithId;
+
 use crate::{action::Action, service::storage_service::StorageRequestPayload, State};
 
 use super::{StorageBlockHeaderPutState, StorageRequestState, StorageRequestStatus};
 
-pub fn storage_block_headers_put_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn storage_block_headers_put_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::StorageBlockHeadersPut(action) => {
             let iter = action
                 .block_headers

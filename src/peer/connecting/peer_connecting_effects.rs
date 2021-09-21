@@ -1,4 +1,4 @@
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 
 use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::PeerStatus;
@@ -10,11 +10,11 @@ use super::{
     PeerConnectionSuccessAction,
 };
 
-pub fn peer_connecting_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
+pub fn peer_connecting_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
 where
     S: Service,
 {
-    match action {
+    match &action.action {
         Action::PeerConnectionInit(action) => {
             let address = action.address;
             let result = store.service().mio().peer_connection_init(address);

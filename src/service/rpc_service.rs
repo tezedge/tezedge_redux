@@ -2,6 +2,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response, StatusCode,
 };
+use redux_rs::ActionWithId;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
@@ -25,7 +26,7 @@ pub enum RpcResponse {
         channel: tokio::sync::oneshot::Sender<State>,
     },
     GetActions {
-        channel: tokio::sync::oneshot::Sender<Vec<Action>>,
+        channel: tokio::sync::oneshot::Sender<Vec<ActionWithId<Action>>>,
     },
 }
 

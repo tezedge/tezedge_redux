@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
+use redux_rs::ActionWithId;
 
 use storage::{BlockHeaderWithHash, BlockStorage, PersistentStorage, StorageError};
 
@@ -21,9 +22,9 @@ pub trait StorageService {
     /// Try to receive/read queued response, if there is any.
     fn response_try_recv(&mut self) -> Result<StorageResponse, ResponseTryRecvError>;
 
-    fn action_store(&mut self, action: &Action);
+    fn action_store(&mut self, action: &ActionWithId<Action>);
 
-    fn actions_get(&self) -> Vec<Action>;
+    fn actions_get(&self) -> Vec<ActionWithId<Action>>;
 }
 
 type StorageWorkerRequester = ServiceWorkerRequester<StorageRequest, StorageResponse>;
@@ -83,7 +84,7 @@ impl StorageResponse {
 #[derive(Debug)]
 pub struct StorageServiceDefault {
     worker_channel: StorageWorkerRequester,
-    actions: Vec<Action>,
+    actions: Vec<ActionWithId<Action>>,
 }
 
 impl StorageServiceDefault {
@@ -138,11 +139,11 @@ impl StorageService for StorageServiceDefault {
         self.worker_channel.try_recv()
     }
 
-    fn action_store(&mut self, action: &Action) {
+    fn action_store(&mut self, action: &ActionWithId<Action>) {
         self.actions.push(action.clone());
     }
 
-    fn actions_get(&self) -> Vec<Action> {
+    fn actions_get(&self) -> Vec<ActionWithId<Action>> {
         self.actions.clone()
     }
 }

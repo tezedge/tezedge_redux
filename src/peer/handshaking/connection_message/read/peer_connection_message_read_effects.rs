@@ -1,5 +1,5 @@
 use crypto::crypto_box::{CryptoKey, PublicKey};
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 use std::net::SocketAddr;
 use tezos_messages::p2p::encoding::connection::ConnectionMessage;
 
@@ -14,11 +14,11 @@ use crate::peer::{PeerStatus, PeerTryReadAction};
 use crate::service::Service;
 use crate::State;
 
-pub fn peer_connection_message_read_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
+pub fn peer_connection_message_read_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
 where
     S: Service,
 {
-    match action {
+    match &action.action {
         Action::PeerConnectionMessageReadInit(action) => {
             store.dispatch(
                 PeerTryReadAction {

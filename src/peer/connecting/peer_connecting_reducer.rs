@@ -1,3 +1,5 @@
+use redux_rs::ActionWithId;
+
 use crate::{
     action::Action,
     peer::{Peer, PeerStatus},
@@ -6,8 +8,8 @@ use crate::{
 
 use super::PeerConnecting;
 
-pub fn peer_connecting_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn peer_connecting_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::PeerConnectionInit(action) => {
             let peer = state.peers.entry(action.address).or_insert_with(|| Peer {
                 status: PeerStatus::Potential,

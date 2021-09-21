@@ -1,6 +1,6 @@
 use ::storage::BlockHeaderWithHash;
 use crypto::hash::BlockHash;
-use redux_rs::{combine_reducers, Reducer, Store};
+use redux_rs::{ActionId, ActionWithId, Reducer, Store, chain_reducers};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::net::SocketAddrV4;
@@ -73,6 +73,7 @@ pub struct State {
     pub peers: BTreeMap<SocketAddr, Peer>,
     pub peers_dns_lookup: Option<PeersDnsLookupState>,
     pub storage: StorageState,
+    pub last_action_id: ActionId,
 }
 
 impl State {
@@ -82,11 +83,12 @@ impl State {
             peers: BTreeMap::new(),
             peers_dns_lookup: None,
             storage: StorageState::new(),
+            last_action_id: ActionId::ZERO,
         }
     }
 }
 
-fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
+fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>) {
     eprintln!("[+] Action: {:#?}", &action);
     // eprintln!("[+] State: {:#?}\n", store.state());
 }
@@ -164,6 +166,25 @@ fn gen_block_headers() -> Vec<BlockHeaderWithHash> {
     ]
 }
 
+pub fn last_action_id_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    state.last_action_id = action.id;
+}
+
+pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
+    chain_reducers!(
+        state,
+        action,
+        last_action_id_reducer,
+        peers_dns_lookup_reducer,
+        peer_connecting_reducer,
+        peer_handshaking_reducer,
+        peer_connection_message_write_reducer,
+        peer_connection_message_read_reducer,
+        storage_block_headers_put_reducer,
+        storage_request_reducer
+    );
+}
+
 fn main() {
     let listen_address = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 9734));
 
@@ -178,18 +199,6 @@ fn main() {
         storage: storage_service,
         rpc: rpc_service,
     };
-
-    let reducer: Reducer<State, Action> = combine_reducers!(
-        State,
-        Action,
-        peers_dns_lookup_reducer,
-        peer_connecting_reducer,
-        peer_handshaking_reducer,
-        peer_connection_message_write_reducer,
-        peer_connection_message_read_reducer,
-        storage_block_headers_put_reducer,
-        storage_request_reducer
-    );
 
     let mut store = Store::new(reducer, service, State::new(default_config()));
 

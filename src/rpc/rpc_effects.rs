@@ -1,11 +1,11 @@
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 
 use crate::service::rpc_service::RpcResponse;
 use crate::service::{RpcService, Service, StorageService};
 use crate::{action::Action, State};
 
-pub fn rpc_effects<S: Service>(store: &mut Store<State, S, Action>, action: &Action) {
-    match action {
+pub fn rpc_effects<S: Service>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::WakeupEvent(_) => {
             while let Ok(msg) = store.service().rpc().try_recv() {
                 match msg {

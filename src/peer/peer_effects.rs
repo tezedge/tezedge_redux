@@ -1,5 +1,5 @@
 use bytes::Buf;
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 use std::io::{Read, Write};
 use tezos_messages::p2p::binary_message::CONTENT_LENGTH_FIELD_BYTES;
 
@@ -17,11 +17,11 @@ use super::handshaking::connection_message::write::{
 use super::handshaking::{MessageReadState, MessageWriteState, PeerHandshakingStatus};
 use super::{PeerTryReadAction, PeerTryWriteAction};
 
-pub fn peer_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
+pub fn peer_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
 where
     S: Service,
 {
-    match action {
+    match &action.action {
         // Handle peer related mio event.
         Action::P2pPeerEvent(event) => {
             if event.is_closed() {

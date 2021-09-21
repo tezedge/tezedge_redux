@@ -1,4 +1,4 @@
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 use tezos_messages::p2p::binary_message::{BinaryChunk, BinaryWrite};
 use tezos_messages::p2p::encoding::connection::ConnectionMessage;
 
@@ -11,11 +11,11 @@ use crate::State;
 use super::connection_message::read::PeerConnectionMessageReadInitAction;
 use super::PeerHandshakingStatus;
 
-pub fn peer_handshaking_effects<S>(store: &mut Store<State, S, Action>, action: &Action)
+pub fn peer_handshaking_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
 where
     S: Service,
 {
-    match action {
+    match &action.action {
         Action::PeerHandshakingInit(action) => {
             let nonce = store.service().randomness().get_nonce(action.address);
             let config = &store.state().config;

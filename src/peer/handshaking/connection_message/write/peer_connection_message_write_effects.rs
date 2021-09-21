@@ -1,4 +1,4 @@
-use redux_rs::Store;
+use redux_rs::{Store, ActionWithId};
 
 use crate::action::Action;
 use crate::peer::handshaking::{MessageWriteState, PeerHandshakingStatus};
@@ -10,11 +10,11 @@ use super::PeerConnectionMessageWriteSuccessAction;
 
 pub fn peer_connection_message_write_effects<S>(
     store: &mut Store<State, S, Action>,
-    action: &Action,
+    action: &ActionWithId<Action>,
 ) where
     S: Service,
 {
-    match action {
+    match &action.action {
         Action::PeerConnectionMessageWriteInit(action) => {
             store.dispatch(
                 PeerTryWriteAction {

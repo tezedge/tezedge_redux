@@ -1,3 +1,5 @@
+use redux_rs::ActionWithId;
+
 use shell_state::networking::chunking::ChunkReadBuffer;
 
 use crate::{action::Action, peer::PeerStatus, State};
@@ -6,8 +8,8 @@ use crate::peer::handshaking::{
     ConnectionMessageDataReceived, MessageReadState, PeerHandshakingStatus,
 };
 
-pub fn peer_connection_message_read_reducer(state: &mut State, action: &Action) {
-    match action {
+pub fn peer_connection_message_read_reducer(state: &mut State, action: &ActionWithId<Action>) {
+    match &action.action {
         Action::PeerConnectionMessageReadInit(action) => {
             if let Some(peer) = state.peers.get_mut(&action.address) {
                 match &mut peer.status {
