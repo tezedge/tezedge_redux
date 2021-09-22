@@ -7,29 +7,8 @@ use crate::request::{PendingRequests, RequestId};
 use crate::service::storage_service::{
     StorageRequestPayload, StorageResponseError, StorageResponseSuccess,
 };
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum StorageBlockHeaderPutState {
-    Idle(BlockHeaderWithHash),
-    Init {
-        block_header: BlockHeaderWithHash,
-        req_id: RequestId,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum StorageRequestStatus {
-    Idle,
-    Pending,
-    Error(StorageResponseError),
-    Success(StorageResponseSuccess),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct StorageRequestState {
-    pub status: StorageRequestStatus,
-    pub payload: StorageRequestPayload,
-}
+use crate::storage::block_header::put::StorageBlockHeaderPutState;
+use crate::storage::request::StorageRequestState;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageState {

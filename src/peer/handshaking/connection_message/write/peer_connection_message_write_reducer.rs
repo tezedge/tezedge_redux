@@ -1,7 +1,7 @@
 use redux_rs::ActionWithId;
 
-use crate::{action::Action, peer::PeerStatus, State};
 use crate::peer::handshaking::{MessageWriteState, PeerHandshakingStatus};
+use crate::{action::Action, peer::PeerStatus, State};
 
 pub fn peer_connection_message_write_reducer(state: &mut State, action: &ActionWithId<Action>) {
     match &action.action {

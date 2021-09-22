@@ -13,6 +13,7 @@ struct PendingRequest<Request> {
 pub struct PendingRequests<Request> {
     list: Slab<PendingRequest<Request>>,
     counter: usize,
+    last_added_req_id: RequestId,
 }
 
 impl<Request> PendingRequests<Request> {
@@ -20,12 +21,18 @@ impl<Request> PendingRequests<Request> {
         Self {
             list: Slab::new(),
             counter: 0,
+            last_added_req_id: RequestId::new(0, 0),
         }
     }
 
     #[inline]
     pub fn len(&self) -> usize {
         self.list.len()
+    }
+
+    #[inline]
+    pub fn last_added_req_id(&self) -> RequestId {
+        self.last_added_req_id
     }
 
     #[inline]
@@ -58,7 +65,10 @@ impl<Request> PendingRequests<Request> {
             request,
         });
 
-        RequestId::new(locator, self.counter)
+        let req_id = RequestId::new(locator, self.counter);
+        self.last_added_req_id = req_id;
+
+        req_id
     }
 
     #[inline]

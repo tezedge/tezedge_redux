@@ -1,11 +1,18 @@
 use redux_rs::ActionWithId;
 
+use crate::service::storage_service::StorageRequestPayload;
 use crate::{action::Action, State};
 
-use super::StorageRequestStatus;
+use super::{StorageRequestState, StorageRequestStatus};
 
 pub fn storage_request_reducer(state: &mut State, action: &ActionWithId<Action>) {
     match &action.action {
+        Action::StorageRequestCreate(action) => {
+            state.storage.requests.add(StorageRequestState {
+                status: StorageRequestStatus::Idle,
+                payload: action.payload.clone(),
+            });
+        }
         Action::StorageRequestPending(action) => {
             if let Some(req) = state.storage.requests.get_mut(action.req_id) {
                 match &req.status {

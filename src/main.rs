@@ -1,6 +1,4 @@
-use ::storage::BlockHeaderWithHash;
-use crypto::hash::BlockHash;
-use redux_rs::{ActionId, ActionWithId, Reducer, Store, chain_reducers};
+use redux_rs::{chain_reducers, ActionId, ActionWithId, Reducer, Store};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::net::SocketAddrV4;
@@ -9,13 +7,17 @@ use std::{
     collections::BTreeMap,
     net::{Ipv4Addr, SocketAddr},
 };
+
+use ::storage::persistent::BincodeEncoded;
+use ::storage::BlockHeaderWithHash;
+use crypto::hash::BlockHash;
 use tezos_messages::p2p::binary_message::{BinaryRead, MessageHash};
 use tezos_messages::p2p::encoding::block_header::{BlockHeader, BlockHeaderBuilder, Fitness};
 
 pub mod io_error_kind;
 
 pub mod event;
-use event::Event;
+use event::{Event, WakeupEvent};
 
 pub mod action;
 use action::Action;
@@ -43,13 +45,20 @@ use peers::dns_lookup::{
 };
 
 pub mod storage;
-use crate::rpc::rpc_effects;
-use crate::service::{RpcServiceDefault, StorageService};
-use crate::storage::{StorageBlockHeadersPutAction, StorageState};
+use crate::storage::block_header::put::{
+    storage_block_header_put_effects, storage_block_header_put_reducer,
+    StorageBlockHeadersPutAction,
+};
+use crate::storage::request::{storage_request_effects, storage_request_reducer};
+use crate::storage::state_snapshot::put::storage_state_snapshot_put_effects;
+use crate::storage::state_snapshot::put::StorageStateSnapshotPutAction;
+use crate::storage::StorageState;
 
 pub mod rpc;
 
 pub mod service;
+use crate::rpc::rpc_effects;
+use crate::service::{RpcServiceDefault, StorageService};
 use service::mio_service::MioInternalEventsContainer;
 use service::{
     DnsServiceDefault, MioService, MioServiceDefault, RandomnessServiceDefault, Service,
@@ -58,12 +67,6 @@ use service::{
 
 pub mod persistent_storage;
 use persistent_storage::init_storage;
-
-use crate::event::WakeupEvent;
-use crate::storage::{
-    storage_block_headers_put_effects, storage_block_headers_put_reducer, storage_request_effects,
-    storage_request_reducer,
-};
 
 pub type Port = u16;
 
@@ -87,6 +90,8 @@ impl State {
         }
     }
 }
+
+impl BincodeEncoded for State {}
 
 fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>) {
     eprintln!("[+] Action: {:#?}", &action);
@@ -180,7 +185,7 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
         peer_handshaking_reducer,
         peer_connection_message_write_reducer,
         peer_connection_message_read_reducer,
-        storage_block_headers_put_reducer,
+        storage_block_header_put_reducer,
         storage_request_reducer
     );
 }
@@ -200,10 +205,20 @@ fn main() {
         rpc: rpc_service,
     };
 
+    std::thread::sleep(std::time::Duration::from_secs(1000));
     let mut store = Store::new(reducer, service, State::new(default_config()));
 
     store.add_middleware(log_middleware);
     store.add_middleware(|store, action| {
+        let last_action_id_num: u64 = store.state().last_action_id.into();
+        if last_action_id_num % 10000 == 0 {
+            store.dispatch(
+                StorageStateSnapshotPutAction {
+                    state: Arc::new(store.state().clone()),
+                }
+                .into(),
+            );
+        }
         store.service.storage().action_store(action);
     });
 
@@ -216,11 +231,20 @@ fn main() {
         peer_connection_message_write_effects(store, action);
         peer_connection_message_read_effects(store, action);
 
-        storage_block_headers_put_effects(store, action);
+        storage_state_snapshot_put_effects(store, action);
+        storage_block_header_put_effects(store, action);
         storage_request_effects(store, action);
 
         rpc_effects(store, action);
     });
+
+    // Persist initial state.
+    store.dispatch(
+        StorageStateSnapshotPutAction {
+            state: Arc::new(store.state().clone()),
+        }
+        .into(),
+    );
 
     store.dispatch(
         PeersDnsLookupInitAction {

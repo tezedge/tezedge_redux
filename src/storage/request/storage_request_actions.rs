@@ -1,9 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    request::RequestId,
-    service::storage_service::{StorageResponseError, StorageResponseSuccess},
+use crate::request::RequestId;
+use crate::service::storage_service::{
+    StorageRequestPayload, StorageResponseError, StorageResponseSuccess,
 };
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct StorageRequestCreateAction {
+    pub payload: StorageRequestPayload,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageRequestInitAction {

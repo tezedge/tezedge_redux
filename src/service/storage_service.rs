@@ -1,13 +1,16 @@
+use redux_rs::{ActionId, ActionWithId};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
-use redux_rs::ActionWithId;
 
-use storage::{BlockHeaderWithHash, BlockStorage, PersistentStorage, StorageError};
+use storage::{
+    BlockHeaderWithHash, BlockStorage, PersistentStorage, ReduxStateStorage, StorageError,
+};
 
 use crate::action::Action;
 use crate::request::RequestId;
+use crate::State;
 
 use super::service_channel::{
     worker_channel, RequestSendError, ResponseTryRecvError, ServiceWorkerRequester,
@@ -42,16 +45,22 @@ impl From<StorageError> for StorageErrorTmp {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageRequestPayload {
     BlockHeaderWithHashPut(BlockHeaderWithHash),
+
+    StateSnapshotPut(Arc<State>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageResponseSuccess {
     BlockHeaderWithHashPutSuccess(bool),
+
+    StateSnapshotPutSuccess(ActionId),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StorageResponseError {
     BlockHeaderWithHashPutError(StorageErrorTmp),
+
+    StateSnapshotPutError(StorageErrorTmp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -94,18 +103,24 @@ impl StorageServiceDefault {
         use StorageResponseSuccess::*;
 
         let block_storage = BlockStorage::new(&storage);
+        let snapshot_storage = ReduxStateStorage::new(&storage);
 
         while let Ok(req) = channel.recv() {
-            match req.payload {
-                BlockHeaderWithHashPut(block_header_with_hash) => {
-                    let result = block_storage
-                        .put_block_header(&block_header_with_hash)
-                        .map(|res| BlockHeaderWithHashPutSuccess(res))
-                        .map_err(|err| BlockHeaderWithHashPutError(err.into()));
-
-                    let _ = channel.send(StorageResponse::new(req.id, result));
+            let result = match req.payload {
+                BlockHeaderWithHashPut(block_header_with_hash) => block_storage
+                    .put_block_header(&block_header_with_hash)
+                    .map(|res| BlockHeaderWithHashPutSuccess(res))
+                    .map_err(|err| BlockHeaderWithHashPutError(err.into())),
+                StateSnapshotPut(state) => {
+                    let last_action_id = state.last_action_id;
+                    snapshot_storage
+                        .put(&last_action_id.into(), &*state)
+                        .map(|_| StateSnapshotPutSuccess(last_action_id))
+                        .map_err(|err| StateSnapshotPutError(err.into()))
                 }
-            }
+            };
+
+            let _ = channel.send(StorageResponse::new(req.id, result));
         }
     }
 

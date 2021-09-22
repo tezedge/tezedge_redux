@@ -20,11 +20,15 @@ use crate::peers::dns_lookup::{
     PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
 };
-use crate::storage::{
+use crate::storage::block_header::put::{
     StorageBlockHeaderPutNextInitAction, StorageBlockHeaderPutNextPendingAction,
-    StorageBlockHeadersPutAction, StorageRequestErrorAction, StorageRequestFinishAction,
+    StorageBlockHeadersPutAction,
+};
+use crate::storage::request::{
+    StorageRequestCreateAction, StorageRequestErrorAction, StorageRequestFinishAction,
     StorageRequestInitAction, StorageRequestPendingAction, StorageRequestSuccessAction,
 };
+use crate::storage::state_snapshot::put::StorageStateSnapshotPutAction;
 
 #[derive(From, Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", content = "content")]
@@ -61,6 +65,9 @@ pub enum Action {
     StorageBlockHeaderPutNextInit(StorageBlockHeaderPutNextInitAction),
     StorageBlockHeaderPutNextPending(StorageBlockHeaderPutNextPendingAction),
 
+    StorageStateSnapshotPut(StorageStateSnapshotPutAction),
+
+    StorageRequestCreate(StorageRequestCreateAction),
     StorageRequestInit(StorageRequestInitAction),
     StorageRequestPending(StorageRequestPendingAction),
     StorageRequestError(StorageRequestErrorAction),

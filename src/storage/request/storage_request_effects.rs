@@ -1,23 +1,34 @@
 use bytes::Buf;
-use redux_rs::{Store, ActionWithId};
+use redux_rs::{ActionWithId, Store};
 use std::io::{Read, Write};
 use tezos_messages::p2p::binary_message::CONTENT_LENGTH_FIELD_BYTES;
 
 use crate::action::Action;
 use crate::service::storage_service::{StorageRequest, StorageRequestPayload};
 use crate::service::{MioService, Service, StorageService};
+use crate::storage::block_header::put::StorageBlockHeaderPutNextInitAction;
 use crate::State;
 
 use super::{
-    StorageBlockHeaderPutNextInitAction, StorageRequestErrorAction, StorageRequestFinishAction,
+    StorageRequestErrorAction, StorageRequestFinishAction, StorageRequestInitAction,
     StorageRequestPendingAction, StorageRequestStatus, StorageRequestSuccessAction,
 };
 
-pub fn storage_request_effects<S>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>)
-where
+pub fn storage_request_effects<S>(
+    store: &mut Store<State, S, Action>,
+    action: &ActionWithId<Action>,
+) where
     S: Service,
 {
     match &action.action {
+        Action::StorageRequestCreate(_) => {
+            store.dispatch(
+                StorageRequestInitAction {
+                    req_id: store.state().storage.requests.last_added_req_id(),
+                }
+                .into(),
+            );
+        }
         Action::StorageRequestInit(action) => {
             let req = match store.state.get().storage.requests.get(action.req_id) {
                 Some(v) => v,

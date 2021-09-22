@@ -1,10 +1,13 @@
 use redux_rs::ActionWithId;
 
-use crate::{action::Action, service::storage_service::StorageRequestPayload, State};
+use crate::action::Action;
+use crate::service::storage_service::StorageRequestPayload;
+use crate::storage::request::{StorageRequestState, StorageRequestStatus};
+use crate::State;
 
-use super::{StorageBlockHeaderPutState, StorageRequestState, StorageRequestStatus};
+use super::StorageBlockHeaderPutState;
 
-pub fn storage_block_headers_put_reducer(state: &mut State, action: &ActionWithId<Action>) {
+pub fn storage_block_header_put_reducer(state: &mut State, action: &ActionWithId<Action>) {
     match &action.action {
         Action::StorageBlockHeadersPut(action) => {
             let iter = action

@@ -90,11 +90,7 @@ impl RpcServiceDefault {
         sender.send(RpcResponse::GetActions { channel: tx });
         let actions = match rx.await {
             Ok(v) => v,
-            Err(_) => {
-                return Ok(Response::new(Body::from(
-                    "request for actions discarded!",
-                )))
-            }
+            Err(_) => return Ok(Response::new(Body::from("request for actions discarded!"))),
         };
 
         make_json_response(&actions)
