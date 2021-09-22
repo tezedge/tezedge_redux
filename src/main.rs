@@ -50,8 +50,10 @@ use crate::storage::block_header::put::{
     StorageBlockHeadersPutAction,
 };
 use crate::storage::request::{storage_request_effects, storage_request_reducer};
-use crate::storage::state_snapshot::put::storage_state_snapshot_put_effects;
-use crate::storage::state_snapshot::put::StorageStateSnapshotPutAction;
+use crate::storage::state_snapshot::create::{
+    storage_state_snapshot_create_effects, storage_state_snapshot_create_reducer,
+    StorageStateSnapshotCreateAction,
+};
 use crate::storage::StorageState;
 
 pub mod rpc;
@@ -180,6 +182,7 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
         state,
         action,
         last_action_id_reducer,
+        storage_state_snapshot_create_reducer,
         peers_dns_lookup_reducer,
         peer_connecting_reducer,
         peer_handshaking_reducer,
@@ -205,25 +208,20 @@ fn main() {
         rpc: rpc_service,
     };
 
-    std::thread::sleep(std::time::Duration::from_secs(1000));
     let mut store = Store::new(reducer, service, State::new(default_config()));
 
     store.add_middleware(log_middleware);
     store.add_middleware(|store, action| {
         let last_action_id_num: u64 = store.state().last_action_id.into();
         if last_action_id_num % 10000 == 0 {
-            store.dispatch(
-                StorageStateSnapshotPutAction {
-                    state: Arc::new(store.state().clone()),
-                }
-                .into(),
-            );
+            store.dispatch(StorageStateSnapshotCreateAction {}.into());
         }
         store.service.storage().action_store(action);
     });
 
     // add effects middleware
     store.add_middleware(|store, action| {
+        storage_state_snapshot_create_effects(store, action);
         peers_dns_lookup_effects(store, action);
         peer_effects(store, action);
         peer_connecting_effects(store, action);
@@ -231,7 +229,6 @@ fn main() {
         peer_connection_message_write_effects(store, action);
         peer_connection_message_read_effects(store, action);
 
-        storage_state_snapshot_put_effects(store, action);
         storage_block_header_put_effects(store, action);
         storage_request_effects(store, action);
 
@@ -239,12 +236,7 @@ fn main() {
     });
 
     // Persist initial state.
-    store.dispatch(
-        StorageStateSnapshotPutAction {
-            state: Arc::new(store.state().clone()),
-        }
-        .into(),
-    );
+    store.dispatch(StorageStateSnapshotCreateAction {}.into());
 
     store.dispatch(
         PeersDnsLookupInitAction {

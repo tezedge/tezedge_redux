@@ -28,7 +28,7 @@ use crate::storage::request::{
     StorageRequestCreateAction, StorageRequestErrorAction, StorageRequestFinishAction,
     StorageRequestInitAction, StorageRequestPendingAction, StorageRequestSuccessAction,
 };
-use crate::storage::state_snapshot::put::StorageStateSnapshotPutAction;
+use crate::storage::state_snapshot::create::StorageStateSnapshotCreateAction;
 
 #[derive(From, Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", content = "content")]
@@ -65,7 +65,7 @@ pub enum Action {
     StorageBlockHeaderPutNextInit(StorageBlockHeaderPutNextInitAction),
     StorageBlockHeaderPutNextPending(StorageBlockHeaderPutNextPendingAction),
 
-    StorageStateSnapshotPut(StorageStateSnapshotPutAction),
+    StorageStateSnapshotCreate(StorageStateSnapshotCreateAction),
 
     StorageRequestCreate(StorageRequestCreateAction),
     StorageRequestInit(StorageRequestInitAction),
