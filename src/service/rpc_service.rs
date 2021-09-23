@@ -4,6 +4,7 @@ use hyper::{
 };
 use redux_rs::{ActionId, ActionWithId};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
@@ -69,22 +70,34 @@ fn make_json_response<T: serde::Serialize>(content: &T) -> ServiceResult {
         .body(Body::from(serde_json::to_string(content)?))?)
 }
 
+/// Helper for parsing URI queries.
+/// Functions takes URI query in format `key1=val1&key1=val2&key2=val3`
+/// and produces map `{ key1: [val1, val2], key2: [val3] }`
+fn parse_query_string(query: &str) -> HashMap<String, Vec<String>> {
+    let mut ret: HashMap<String, Vec<String>> = HashMap::new();
+    for (key, value) in query.split('&').map(|x| {
+        let mut parts = x.split('=');
+        (parts.next().unwrap(), parts.next().unwrap_or(""))
+    }) {
+        if let Some(vals) = ret.get_mut(key) {
+            // append value to existing vector
+            vals.push(value.to_string());
+        } else {
+            // create new vector with a single value
+            ret.insert(key.to_string(), vec![value.to_string()]);
+        }
+    }
+    ret
+}
+
 impl RpcServiceDefault {
-    async fn get_global_state(
+    async fn get_current_global_state(
         mut sender: ServiceWorkerResponderSender<RpcResponse>,
     ) -> Result<State, tokio::sync::oneshot::error::RecvError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         sender.send(RpcResponse::GetCurrentGlobalState { channel: tx });
         rx.await
-    }
-
-    async fn handle_global_state_get(
-        mut sender: ServiceWorkerResponderSender<RpcResponse>,
-    ) -> ServiceResult {
-        let state = Self::get_global_state(sender).await.unwrap();
-
-        make_json_response(&state)
     }
 
     async fn get_action(
@@ -104,6 +117,65 @@ impl RpcServiceDefault {
         .unwrap()
     }
 
+    async fn get_state_before_action_id(
+        snapshot_storage: &ReduxStateStorage,
+        action_storage: &ReduxActionStorage,
+        target_action_id: u64,
+    ) -> Result<State, Box<dyn std::error::Error>> {
+        let closest_snapshot_action_id = target_action_id / 10000;
+        let mut state = match snapshot_storage.get(&closest_snapshot_action_id).unwrap() {
+            Some(v) => v,
+            None => return Err("snapshot not available".into()),
+        };
+
+        if target_action_id > closest_snapshot_action_id {
+            for action_id in (closest_snapshot_action_id + 1)..target_action_id {
+                let action = match Self::get_action(action_storage, action_id).await.unwrap() {
+                    Some(v) => v,
+                    None => break,
+                };
+                crate::reducer(&mut state, &action);
+            }
+        }
+
+        Ok(state)
+    }
+
+    async fn get_state_after_action_id(
+        snapshot_storage: &ReduxStateStorage,
+        action_storage: &ReduxActionStorage,
+        target_action_id: u64,
+    ) -> Result<State, Box<dyn std::error::Error>> {
+        let mut state =
+            Self::get_state_before_action_id(snapshot_storage, action_storage, target_action_id)
+                .await?;
+
+        if let Some(action) = Self::get_action(action_storage, target_action_id)
+            .await
+            .unwrap()
+        {
+            crate::reducer(&mut state, &action);
+        };
+
+        Ok(state)
+    }
+
+    async fn handle_global_state_get(
+        mut sender: ServiceWorkerResponderSender<RpcResponse>,
+        snapshot_storage: &ReduxStateStorage,
+        action_storage: &ReduxActionStorage,
+        target_action_id: Option<u64>,
+    ) -> ServiceResult {
+        make_json_response(&match target_action_id {
+            Some(target_action_id) => {
+                Self::get_state_after_action_id(snapshot_storage, action_storage, target_action_id)
+                    .await
+                    .ok()
+            }
+            None => Some(Self::get_current_global_state(sender).await.unwrap()),
+        })
+    }
+
     async fn handle_actions_get(
         mut sender: ServiceWorkerResponderSender<RpcResponse>,
         snapshot_storage: &ReduxStateStorage,
@@ -112,37 +184,29 @@ impl RpcServiceDefault {
         limit: Option<u64>,
     ) -> ServiceResult {
         // TODO: optimize by getting just part of state, instead of whole state.
-        let limit = limit.unwrap_or(20);
+        let limit = limit.unwrap_or(20).max(1);
         let cursor = match cursor {
             Some(v) => v,
             None => {
-                let state = Self::get_global_state(sender).await.unwrap();
+                let state = Self::get_current_global_state(sender).await.unwrap();
                 let last_action_id_num: u64 = state.last_action_id.into();
                 last_action_id_num.checked_sub(limit).unwrap_or(0)
             }
         };
 
-        let closest_snapshot_action_id = cursor / 10000;
-        let snapshot = match snapshot_storage.get(&closest_snapshot_action_id) {
-            Ok(Some(v)) => v,
-            Ok(None) => return make_json_response::<Vec<()>>(&vec![]),
+        let mut state = match Self::get_state_before_action_id(
+            snapshot_storage,
+            action_storage,
+            cursor,
+        )
+        .await
+        {
+            Ok(v) => v,
             Err(err) => {
                 dbg!(err);
                 return make_json_response::<Vec<()>>(&vec![]);
             }
         };
-
-        let mut state = snapshot;
-
-        if cursor > closest_snapshot_action_id {
-            for action_id in (closest_snapshot_action_id + 1)..cursor {
-                let action = match Self::get_action(action_storage, action_id).await.unwrap() {
-                    Some(v) => v,
-                    None => break,
-                };
-                crate::reducer(&mut state, &action);
-            }
-        }
 
         let mut actions_with_state = vec![];
 
@@ -190,41 +254,32 @@ impl RpcServiceDefault {
                     async move {
                         let path = req.uri().path();
                         if path == "/state" {
-                            Self::handle_global_state_get(sender).await
-                        } else if path.starts_with("/actions") {
-                            let (cursor, limit) = req
+                            let query = req
                                 .uri()
                                 .query()
-                                .map(|query| {
-                                    query
-                                        .split("&")
-                                        .map(|x| x.trim())
-                                        .filter(|x| !x.is_empty())
-                                        .map(|x| {
-                                            let mut parts = x.split("=");
-                                            if let (Some(key), Some(value)) =
-                                                (parts.next(), parts.next())
-                                            {
-                                                Some((key, value))
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .filter_map(|x| x)
-                                        .fold((None, None), |r, (k, v)| match k {
-                                            "cursor" => (v.parse().ok(), r.1),
-                                            "limit" => (r.0, v.parse().ok()),
-                                            _ => r,
-                                        })
-                                })
-                                .unwrap_or_else(|| (None, None));
+                                .map(|query_str| parse_query_string(query_str))
+                                .unwrap_or(HashMap::new());
+
+                            Self::handle_global_state_get(
+                                sender,
+                                &snapshot_storage,
+                                &action_storage,
+                                query.get("action_id").map(|x| x[0].parse().ok()).flatten(),
+                            )
+                            .await
+                        } else if path.starts_with("/actions") {
+                            let query = req
+                                .uri()
+                                .query()
+                                .map(|query_str| parse_query_string(query_str))
+                                .unwrap_or(HashMap::new());
 
                             Self::handle_actions_get(
                                 sender,
                                 &snapshot_storage,
                                 &action_storage,
-                                cursor,
-                                limit,
+                                query.get("cursor").map(|x| x[0].parse().ok()).flatten(),
+                                query.get("limit").map(|x| x[0].parse().ok()).flatten(),
                             )
                             .await
                         } else {
