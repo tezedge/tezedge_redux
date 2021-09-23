@@ -146,6 +146,12 @@ impl RpcServiceDefault {
 
         let mut actions_with_state = vec![];
 
+        let cursor = match cursor {
+            // Actions start from 1.
+            0 => 1,
+            v => v,
+        };
+
         for action_id in cursor..(cursor + limit) {
             let action = match Self::get_action(action_storage, action_id).await.unwrap() {
                 Some(v) => v,
