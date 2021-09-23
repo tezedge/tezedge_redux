@@ -12,9 +12,6 @@ pub fn rpc_effects<S: Service>(store: &mut Store<State, S, Action>, action: &Act
                     RpcResponse::GetCurrentGlobalState { channel } => {
                         channel.send(store.state.get().clone());
                     }
-                    RpcResponse::GetActions { channel } => {
-                        channel.send(store.service.storage().actions_get());
-                    }
                 }
             }
         }

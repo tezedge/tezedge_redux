@@ -1,5 +1,6 @@
 use derive_more::From;
 use serde::{Deserialize, Serialize};
+use storage::persistent::{BincodeEncoded, SchemaError};
 
 use crate::event::{P2pPeerEvent, WakeupEvent};
 use crate::peer::connecting::{
@@ -73,4 +74,30 @@ pub enum Action {
     StorageRequestError(StorageRequestErrorAction),
     StorageRequestSuccess(StorageRequestSuccessAction),
     StorageRequestFinish(StorageRequestFinishAction),
+}
+
+// bincode decoding fails with: "Bincode does not support Deserializer::deserialize_identifier".
+// So use json instead, which works.
+
+// impl BincodeEncoded for Action {
+//     fn decode(bytes: &[u8]) -> Result<Self, storage::persistent::SchemaError> {
+//         // here it errors.
+//         Ok(dbg!(bincode::deserialize(bytes)).unwrap())
+//     }
+
+//     fn encode(&self) -> Result<Vec<u8>, storage::persistent::SchemaError> {
+//         Ok(bincode::serialize::<Self>(self).unwrap())
+//     }
+// }
+
+impl storage::persistent::Encoder for Action {
+    fn encode(&self) -> Result<Vec<u8>, SchemaError> {
+        serde_json::to_vec(self).map_err(|_| SchemaError::EncodeError)
+    }
+}
+
+impl storage::persistent::Decoder for Action {
+    fn decode(bytes: &[u8]) -> Result<Self, SchemaError> {
+        serde_json::from_slice(bytes).map_err(|_| SchemaError::DecodeError)
+    }
 }

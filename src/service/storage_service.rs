@@ -5,7 +5,8 @@ use std::sync::Arc;
 use std::thread;
 
 use storage::{
-    BlockHeaderWithHash, BlockStorage, PersistentStorage, ReduxStateStorage, StorageError,
+    BlockHeaderWithHash, BlockStorage, PersistentStorage, ReduxActionStorage, ReduxStateStorage,
+    StorageError,
 };
 
 use crate::action::Action;
@@ -24,10 +25,6 @@ pub trait StorageService {
 
     /// Try to receive/read queued response, if there is any.
     fn response_try_recv(&mut self) -> Result<StorageResponse, ResponseTryRecvError>;
-
-    fn action_store(&mut self, action: &ActionWithId<Action>);
-
-    fn actions_get(&self) -> Vec<ActionWithId<Action>>;
 }
 
 type StorageWorkerRequester = ServiceWorkerRequester<StorageRequest, StorageResponse>;
@@ -47,6 +44,7 @@ pub enum StorageRequestPayload {
     BlockHeaderWithHashPut(BlockHeaderWithHash),
 
     StateSnapshotPut(Arc<State>),
+    ActionPut(Box<ActionWithId<Action>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -54,6 +52,7 @@ pub enum StorageResponseSuccess {
     BlockHeaderWithHashPutSuccess(bool),
 
     StateSnapshotPutSuccess(ActionId),
+    ActionPutSuccess(ActionId),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -61,16 +60,20 @@ pub enum StorageResponseError {
     BlockHeaderWithHashPutError(StorageErrorTmp),
 
     StateSnapshotPutError(StorageErrorTmp),
+    ActionPutError(StorageErrorTmp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageRequest {
-    pub id: RequestId,
+    /// Identifier for the Request.
+    ///
+    /// If `None`, response won't be received about that request.
+    pub id: Option<RequestId>,
     pub payload: StorageRequestPayload,
 }
 
 impl StorageRequest {
-    pub fn new(id: RequestId, payload: StorageRequestPayload) -> Self {
+    pub fn new(id: Option<RequestId>, payload: StorageRequestPayload) -> Self {
         Self { id, payload }
     }
 }
@@ -93,7 +96,6 @@ impl StorageResponse {
 #[derive(Debug)]
 pub struct StorageServiceDefault {
     worker_channel: StorageWorkerRequester,
-    actions: Vec<ActionWithId<Action>>,
 }
 
 impl StorageServiceDefault {
@@ -104,6 +106,7 @@ impl StorageServiceDefault {
 
         let block_storage = BlockStorage::new(&storage);
         let snapshot_storage = ReduxStateStorage::new(&storage);
+        let action_storage = ReduxActionStorage::new(&storage);
 
         while let Ok(req) = channel.recv() {
             let result = match req.payload {
@@ -111,6 +114,11 @@ impl StorageServiceDefault {
                     .put_block_header(&block_header_with_hash)
                     .map(|res| BlockHeaderWithHashPutSuccess(res))
                     .map_err(|err| BlockHeaderWithHashPutError(err.into())),
+
+                ActionPut(action) => action_storage
+                    .put::<Action>(&action.id.into(), &action.action)
+                    .map(|_| ActionPutSuccess(action.id))
+                    .map_err(|err| ActionPutError(err.into())),
                 StateSnapshotPut(state) => {
                     let last_action_id = state.last_action_id;
                     snapshot_storage
@@ -120,7 +128,9 @@ impl StorageServiceDefault {
                 }
             };
 
-            let _ = channel.send(StorageResponse::new(req.id, result));
+            if let Some(req_id) = req.id {
+                let _ = channel.send(StorageResponse::new(req_id, result));
+            }
         }
     }
 
@@ -135,7 +145,6 @@ impl StorageServiceDefault {
 
         Self {
             worker_channel: requester,
-            actions: vec![],
         }
     }
 }
@@ -152,13 +161,5 @@ impl StorageService for StorageServiceDefault {
     #[inline(always)]
     fn response_try_recv(&mut self) -> Result<StorageResponse, ResponseTryRecvError> {
         self.worker_channel.try_recv()
-    }
-
-    fn action_store(&mut self, action: &ActionWithId<Action>) {
-        self.actions.push(action.clone());
-    }
-
-    fn actions_get(&self) -> Vec<ActionWithId<Action>> {
-        self.actions.clone()
     }
 }

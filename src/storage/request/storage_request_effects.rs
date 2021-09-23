@@ -43,7 +43,7 @@ pub fn storage_request_effects<S>(
                 .service
                 .storage()
                 .request_send(StorageRequest {
-                    id: action.req_id,
+                    id: Some(action.req_id),
                     payload: req.payload.clone(),
                 })
                 .unwrap();

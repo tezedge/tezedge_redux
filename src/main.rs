@@ -1,5 +1,6 @@
 use redux_rs::{chain_reducers, ActionId, ActionWithId, Reducer, Store};
 use serde::{Deserialize, Serialize};
+use service::storage_service::{StorageRequest, StorageRequestPayload};
 use std::convert::TryInto;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
@@ -181,7 +182,7 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
     chain_reducers!(
         state,
         action,
-        last_action_id_reducer,
+        // needs to be first!
         storage_state_snapshot_create_reducer,
         peers_dns_lookup_reducer,
         peer_connecting_reducer,
@@ -189,16 +190,21 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
         peer_connection_message_write_reducer,
         peer_connection_message_read_reducer,
         storage_block_header_put_reducer,
-        storage_request_reducer
+        storage_request_reducer,
+        // needs to be last!
+        last_action_id_reducer
     );
 }
 
 fn main() {
     let listen_address = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 9734));
 
+    let persistent_storage = init_storage();
+
     let mio_service = MioServiceDefault::new(listen_address);
-    let storage_service = StorageServiceDefault::init(mio_service.waker(), init_storage());
-    let rpc_service = RpcServiceDefault::init(mio_service.waker());
+    let storage_service =
+        StorageServiceDefault::init(mio_service.waker(), persistent_storage.clone());
+    let rpc_service = RpcServiceDefault::init(mio_service.waker(), persistent_storage.clone());
 
     let service = ServiceDefault {
         randomness: RandomnessServiceDefault::default(),
@@ -216,7 +222,10 @@ fn main() {
         if last_action_id_num % 10000 == 0 {
             store.dispatch(StorageStateSnapshotCreateAction {}.into());
         }
-        store.service.storage().action_store(action);
+        store.service.storage().request_send(StorageRequest {
+            id: None,
+            payload: StorageRequestPayload::ActionPut(Box::new(action.clone())),
+        });
     });
 
     // add effects middleware
