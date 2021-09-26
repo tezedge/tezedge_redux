@@ -1,14 +1,14 @@
+use redux_rs::ActionId;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
-use serde::{Deserialize, Serialize};
-use redux_rs::ActionId;
 
 use ::storage::persistent::BincodeEncoded;
 
-use crate::storage::StorageState;
 use crate::config::Config;
-use crate::peers::dns_lookup::PeersDnsLookupState;
 use crate::peer::Peer;
+use crate::peers::dns_lookup::PeersDnsLookupState;
+use crate::storage::StorageState;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct State {

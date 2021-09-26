@@ -1,4 +1,4 @@
-use redux_rs::{chain_reducers, ActionWithId, Reducer, Store};
+use redux_rs::{ActionWithId, Store};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::sync::Arc;
@@ -22,44 +22,28 @@ use config::default_config;
 mod state;
 pub use state::State;
 
+mod reducer;
+pub use reducer::reducer;
+
+mod effects;
+pub use effects::effects;
+
 pub mod request;
 
 pub mod peer;
-use peer::connecting::{peer_connecting_effects, peer_connecting_reducer};
-use peer::disconnection::{peer_disconnection_effects, peer_disconnection_reducer};
-use peer::handshaking::connection_message::read::{
-    peer_connection_message_read_effects, peer_connection_message_read_reducer,
-};
-use peer::handshaking::connection_message::write::{
-    peer_connection_message_write_effects, peer_connection_message_write_reducer,
-};
-use peer::handshaking::{peer_handshaking_effects, peer_handshaking_reducer};
-use peer::peer_effects;
 
 pub mod peers;
-use peers::dns_lookup::{
-    peers_dns_lookup_effects, peers_dns_lookup_reducer, PeersDnsLookupInitAction,
-};
-use peers::remove::peers_remove_reducer;
+use peers::dns_lookup::PeersDnsLookupInitAction;
 
 pub mod storage;
-use crate::storage::block_header::put::{
-    storage_block_header_put_effects, storage_block_header_put_reducer,
-    StorageBlockHeadersPutAction,
-};
-use crate::storage::request::{storage_request_effects, storage_request_reducer};
-use crate::storage::state_snapshot::create::{
-    storage_state_snapshot_create_effects, storage_state_snapshot_create_reducer,
-    StorageStateSnapshotCreateAction,
-};
+use crate::storage::block_header::put::StorageBlockHeadersPutAction;
+use crate::storage::state_snapshot::create::StorageStateSnapshotCreateAction;
 
 pub mod rpc;
 
 pub mod service;
-use crate::rpc::rpc_effects;
-use crate::service::{RpcServiceDefault, StorageService};
+use crate::service::RpcServiceDefault;
 use service::mio_service::MioInternalEventsContainer;
-use service::storage_service::{StorageRequest, StorageRequestPayload};
 use service::{
     DnsServiceDefault, MioService, MioServiceDefault, RandomnessServiceDefault, Service,
     ServiceDefault, StorageServiceDefault,
@@ -69,13 +53,6 @@ pub mod persistent_storage;
 use persistent_storage::init_storage;
 
 pub type Port = u16;
-
-
-
-fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>) {
-    eprintln!("[+] Action: {:#?}", &action);
-    // eprintln!("[+] State: {:#?}\n", store.state());
-}
 
 fn gen_block_headers() -> Vec<BlockHeaderWithHash> {
     let mut builder = BlockHeaderBuilder::default();
@@ -150,30 +127,6 @@ fn gen_block_headers() -> Vec<BlockHeaderWithHash> {
     ]
 }
 
-pub fn last_action_id_reducer(state: &mut State, action: &ActionWithId<Action>) {
-    state.last_action_id = action.id;
-}
-
-pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
-    chain_reducers!(
-        state,
-        action,
-        // needs to be first!
-        storage_state_snapshot_create_reducer,
-        peers_dns_lookup_reducer,
-        peers_remove_reducer,
-        peer_connecting_reducer,
-        peer_handshaking_reducer,
-        peer_connection_message_write_reducer,
-        peer_connection_message_read_reducer,
-        peer_disconnection_reducer,
-        storage_block_header_put_reducer,
-        storage_request_reducer,
-        // needs to be last!
-        last_action_id_reducer
-    );
-}
-
 fn main() {
     let listen_address = ([0, 0, 0, 0], 9734).into();
 
@@ -194,36 +147,7 @@ fn main() {
 
     let mut store = Store::new(reducer, service, State::new(default_config()));
 
-    store.add_middleware(log_middleware);
-    store.add_middleware(|store, action| {
-        let last_action_id_num: u64 = store.state().last_action_id.into();
-        if last_action_id_num % 10000 == 0 {
-            store.dispatch(StorageStateSnapshotCreateAction {}.into());
-        }
-        store.service.storage().request_send(StorageRequest {
-            id: None,
-            payload: StorageRequestPayload::ActionPut(Box::new(action.clone())),
-        });
-    });
-
-    // add effects middleware
-    store.add_middleware(|store, action| {
-        storage_state_snapshot_create_effects(store, action);
-
-        peers_dns_lookup_effects(store, action);
-
-        peer_effects(store, action);
-        peer_connecting_effects(store, action);
-        peer_handshaking_effects(store, action);
-        peer_connection_message_write_effects(store, action);
-        peer_connection_message_read_effects(store, action);
-        peer_disconnection_effects(store, action);
-
-        storage_block_header_put_effects(store, action);
-        storage_request_effects(store, action);
-
-        rpc_effects(store, action);
-    });
+    store.add_middleware(effects);
 
     // Persist initial state.
     store.dispatch(StorageStateSnapshotCreateAction {}.into());
