@@ -1,6 +1,5 @@
 use redux_rs::{chain_reducers, ActionId, ActionWithId, Reducer, Store};
 use serde::{Deserialize, Serialize};
-use service::storage_service::{StorageRequest, StorageRequestPayload};
 use std::convert::TryInto;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
@@ -30,6 +29,7 @@ pub mod request;
 
 pub mod peer;
 use peer::connecting::{peer_connecting_effects, peer_connecting_reducer};
+use peer::disconnection::{peer_disconnection_effects, peer_disconnection_reducer};
 use peer::handshaking::connection_message::read::{
     peer_connection_message_read_effects, peer_connection_message_read_reducer,
 };
@@ -44,6 +44,7 @@ use peers::dns_lookup::{
     peers_dns_lookup_effects, peers_dns_lookup_reducer, PeersDnsLookupInitAction,
     PeersDnsLookupState,
 };
+use peers::remove::peers_remove_reducer;
 
 pub mod storage;
 use crate::storage::block_header::put::{
@@ -63,6 +64,7 @@ pub mod service;
 use crate::rpc::rpc_effects;
 use crate::service::{RpcServiceDefault, StorageService};
 use service::mio_service::MioInternalEventsContainer;
+use service::storage_service::{StorageRequest, StorageRequestPayload};
 use service::{
     DnsServiceDefault, MioService, MioServiceDefault, RandomnessServiceDefault, Service,
     ServiceDefault, StorageServiceDefault,
@@ -185,10 +187,12 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
         // needs to be first!
         storage_state_snapshot_create_reducer,
         peers_dns_lookup_reducer,
+        peers_remove_reducer,
         peer_connecting_reducer,
         peer_handshaking_reducer,
         peer_connection_message_write_reducer,
         peer_connection_message_read_reducer,
+        peer_disconnection_reducer,
         storage_block_header_put_reducer,
         storage_request_reducer,
         // needs to be last!
@@ -231,12 +235,15 @@ fn main() {
     // add effects middleware
     store.add_middleware(|store, action| {
         storage_state_snapshot_create_effects(store, action);
+
         peers_dns_lookup_effects(store, action);
+
         peer_effects(store, action);
         peer_connecting_effects(store, action);
         peer_handshaking_effects(store, action);
         peer_connection_message_write_effects(store, action);
         peer_connection_message_read_effects(store, action);
+        peer_disconnection_effects(store, action);
 
         storage_block_header_put_effects(store, action);
         storage_request_effects(store, action);

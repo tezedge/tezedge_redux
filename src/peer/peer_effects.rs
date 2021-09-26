@@ -8,6 +8,7 @@ use crate::peer::PeerStatus;
 use crate::service::{MioService, Service};
 use crate::State;
 
+use super::disconnection::PeerDisconnectedAction;
 use super::handshaking::connection_message::read::{
     PeerConnectionMessagePartReadAction, PeerConnectionMessageReadErrorAction,
 };
@@ -25,7 +26,12 @@ where
         // Handle peer related mio event.
         Action::P2pPeerEvent(event) => {
             if event.is_closed() {
-                return;
+                return store.dispatch(
+                    PeerDisconnectedAction {
+                        address: event.address(),
+                    }
+                    .into(),
+                );
             }
 
             if event.is_writable() {

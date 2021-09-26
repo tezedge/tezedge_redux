@@ -7,6 +7,7 @@ use crate::peer::connecting::{
     PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
     PeerConnectionSuccessAction,
 };
+use crate::peer::disconnection::{PeerDisconnectAction, PeerDisconnectedAction};
 use crate::peer::handshaking::connection_message::read::{
     PeerConnectionMessagePartReadAction, PeerConnectionMessageReadErrorAction,
     PeerConnectionMessageReadInitAction, PeerConnectionMessageReadSuccessAction,
@@ -21,6 +22,7 @@ use crate::peers::dns_lookup::{
     PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
 };
+use crate::peers::remove::PeersRemoveAction;
 use crate::storage::block_header::put::{
     StorageBlockHeaderPutNextInitAction, StorageBlockHeaderPutNextPendingAction,
     StorageBlockHeadersPutAction,
@@ -39,10 +41,15 @@ pub enum Action {
     PeersDnsLookupSuccess(PeersDnsLookupSuccessAction),
     PeersDnsLookupFinish(PeersDnsLookupFinishAction),
 
+    PeersRemove(PeersRemoveAction),
+
     PeerConnectionInit(PeerConnectionInitAction),
     PeerConnectionPending(PeerConnectionPendingAction),
     PeerConnectionError(PeerConnectionErrorAction),
     PeerConnectionSuccess(PeerConnectionSuccessAction),
+
+    PeerDisconnect(PeerDisconnectAction),
+    PeerDisconnected(PeerDisconnectedAction),
 
     P2pPeerEvent(P2pPeerEvent),
     WakeupEvent(WakeupEvent),

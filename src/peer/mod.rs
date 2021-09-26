@@ -1,4 +1,5 @@
 pub mod connecting;
+pub mod disconnection;
 pub mod handshaking;
 
 mod peer_token;

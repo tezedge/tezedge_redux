@@ -1,3 +1,4 @@
+use derive_more::From;
 use serde::{Deserialize, Serialize};
 
 use crypto::crypto_box::PublicKey;
@@ -5,7 +6,10 @@ use tezos_messages::p2p::encoding::version::NetworkVersion;
 
 use crate::Port;
 
-use super::{connecting::PeerConnecting, handshaking::PeerHandshaking, PeerCrypto, PeerToken};
+use super::{
+    connecting::PeerConnecting, disconnection::PeerDisconnecting, handshaking::PeerHandshaking,
+    PeerCrypto, PeerToken,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerHandshaked {
@@ -18,7 +22,7 @@ pub struct PeerHandshaked {
     pub private_node: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(From, Serialize, Deserialize, Debug, Clone)]
 pub enum PeerStatus {
     /// Peer is a potential peer.
     Potential,
@@ -26,6 +30,9 @@ pub enum PeerStatus {
     Connecting(PeerConnecting),
     Handshaking(PeerHandshaking),
     Handshaked(PeerHandshaked),
+
+    Disconnecting(PeerDisconnecting),
+    Disconnected,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
