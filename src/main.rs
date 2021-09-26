@@ -1,14 +1,8 @@
-use redux_rs::{chain_reducers, ActionId, ActionWithId, Reducer, Store};
+use redux_rs::{chain_reducers, ActionWithId, Reducer, Store};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::net::SocketAddrV4;
 use std::sync::Arc;
-use std::{
-    collections::BTreeMap,
-    net::{Ipv4Addr, SocketAddr},
-};
 
-use ::storage::persistent::BincodeEncoded;
 use ::storage::BlockHeaderWithHash;
 use crypto::hash::BlockHash;
 use tezos_messages::p2p::binary_message::{BinaryRead, MessageHash};
@@ -23,7 +17,10 @@ pub mod action;
 use action::Action;
 
 pub mod config;
-use config::{default_config, Config};
+use config::default_config;
+
+mod state;
+pub use state::State;
 
 pub mod request;
 
@@ -37,12 +34,11 @@ use peer::handshaking::connection_message::write::{
     peer_connection_message_write_effects, peer_connection_message_write_reducer,
 };
 use peer::handshaking::{peer_handshaking_effects, peer_handshaking_reducer};
-use peer::{peer_effects, Peer};
+use peer::peer_effects;
 
 pub mod peers;
 use peers::dns_lookup::{
     peers_dns_lookup_effects, peers_dns_lookup_reducer, PeersDnsLookupInitAction,
-    PeersDnsLookupState,
 };
 use peers::remove::peers_remove_reducer;
 
@@ -56,7 +52,6 @@ use crate::storage::state_snapshot::create::{
     storage_state_snapshot_create_effects, storage_state_snapshot_create_reducer,
     StorageStateSnapshotCreateAction,
 };
-use crate::storage::StorageState;
 
 pub mod rpc;
 
@@ -75,28 +70,7 @@ use persistent_storage::init_storage;
 
 pub type Port = u16;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct State {
-    pub config: Config,
-    pub peers: BTreeMap<SocketAddr, Peer>,
-    pub peers_dns_lookup: Option<PeersDnsLookupState>,
-    pub storage: StorageState,
-    pub last_action_id: ActionId,
-}
 
-impl State {
-    pub fn new(config: Config) -> Self {
-        Self {
-            config,
-            peers: BTreeMap::new(),
-            peers_dns_lookup: None,
-            storage: StorageState::new(),
-            last_action_id: ActionId::ZERO,
-        }
-    }
-}
-
-impl BincodeEncoded for State {}
 
 fn log_middleware<S: Service>(store: &mut Store<State, S, Action>, action: &ActionWithId<Action>) {
     eprintln!("[+] Action: {:#?}", &action);
@@ -201,7 +175,7 @@ pub fn reducer(state: &mut State, action: &ActionWithId<Action>) {
 }
 
 fn main() {
-    let listen_address = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 9734));
+    let listen_address = ([0, 0, 0, 0], 9734).into();
 
     let persistent_storage = init_storage();
 
