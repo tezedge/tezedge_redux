@@ -4,7 +4,7 @@ use hyper::{
 };
 use redux_rs::{ActionId, ActionWithId};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
@@ -184,8 +184,9 @@ impl RpcServiceDefault {
         limit: Option<u64>,
     ) -> ServiceResult {
         // TODO: optimize by getting just part of state, instead of whole state.
-        let limit = limit.unwrap_or(20).max(1);
-        let cursor = match cursor {
+        let limit = limit.unwrap_or(20).max(1).min(1000);
+
+        let end = match cursor {
             Some(v) => v,
             None => {
                 let state = Self::get_current_global_state(sender).await.unwrap();
@@ -193,11 +194,12 @@ impl RpcServiceDefault {
                 last_action_id_num.checked_sub(limit).unwrap_or(0)
             }
         };
+        let start = end.checked_sub(limit - 1).unwrap_or(0);
 
         let mut state = match Self::get_state_before_action_id(
             snapshot_storage,
             action_storage,
-            cursor,
+            start,
         )
         .await
         {
@@ -208,21 +210,21 @@ impl RpcServiceDefault {
             }
         };
 
-        let mut actions_with_state = vec![];
+        let mut actions_with_state = VecDeque::new();
 
-        let cursor = match cursor {
+        let start = match start {
             // Actions start from 1.
             0 => 1,
             v => v,
         };
 
-        for action_id in cursor..(cursor + limit) {
+        for action_id in start..=end {
             let action = match Self::get_action(action_storage, action_id).await.unwrap() {
                 Some(v) => v,
                 None => break,
             };
             crate::reducer(&mut state, &action);
-            actions_with_state.push(ActionWithState {
+            actions_with_state.push_front(ActionWithState {
                 action,
                 state: state.clone(),
             });
