@@ -2,7 +2,7 @@ use redux_rs::ActionWithId;
 
 use crate::{
     action::Action,
-    peer::{connecting::PeerConnecting, Peer, PeerStatus},
+    peer::{connection::outgoing::PeerConnectionOutgoingState, Peer, PeerStatus},
     State,
 };
 
@@ -13,7 +13,7 @@ pub fn peer_handshaking_reducer(state: &mut State, action: &ActionWithId<Action>
         Action::PeerHandshakingInit(action) => {
             if let Some(peer) = state.peers.get_mut(&action.address) {
                 match peer.status {
-                    PeerStatus::Connecting(PeerConnecting::Success { token }) => {
+                    PeerStatus::Connecting(PeerConnectionOutgoingState::Success { token }) => {
                         peer.status = PeerStatus::Handshaking(PeerHandshaking {
                             token,
                             incoming: false,

@@ -5,7 +5,7 @@ use crate::io_error_kind::IOErrorKind;
 use crate::peer::PeerToken;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum PeerConnecting {
+pub enum PeerConnectionOutgoingState {
     Idle,
     Pending { token: PeerToken },
     Success { token: PeerToken },

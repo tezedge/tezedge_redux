@@ -21,5 +21,6 @@ pub struct PeersDnsLookupSuccessAction {
     pub addresses: Vec<SocketAddr>,
 }
 
+/// Cleanup dns lookup state.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeersDnsLookupFinishAction;
+pub struct PeersDnsLookupCleanupAction;

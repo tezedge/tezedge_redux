@@ -3,7 +3,7 @@ use redux_rs::ActionWithId;
 use crate::{
     action::Action,
     peer::{
-        connecting::PeerConnecting,
+        connection::outgoing::PeerConnectionOutgoingState,
         disconnection::{PeerDisconnecting, PeerDisconnectionState},
         Peer, PeerStatus,
     },
@@ -20,11 +20,11 @@ pub fn peer_disconnection_reducer(state: &mut State, action: &ActionWithId<Actio
 
             peer.status = match &peer.status {
                 PeerStatus::Connecting(state) => match state {
-                    PeerConnecting::Pending { token } => PeerDisconnecting {
+                    PeerConnectionOutgoingState::Pending { token } => PeerDisconnecting {
                         token: token.clone(),
                     }
                     .into(),
-                    PeerConnecting::Success { token } => PeerDisconnecting {
+                    PeerConnectionOutgoingState::Success { token } => PeerDisconnecting {
                         token: token.clone(),
                     }
                     .into(),

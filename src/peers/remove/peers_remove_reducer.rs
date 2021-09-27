@@ -3,7 +3,7 @@ use redux_rs::ActionWithId;
 use crate::{
     action::Action,
     peer::{
-        connecting::PeerConnecting,
+        connection::outgoing::PeerConnectionOutgoingState,
         disconnection::{PeerDisconnecting, PeerDisconnectionState},
         Peer, PeerStatus,
     },

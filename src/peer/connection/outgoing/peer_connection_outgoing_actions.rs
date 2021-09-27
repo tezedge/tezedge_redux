@@ -5,24 +5,29 @@ use std::net::SocketAddr;
 use crate::io_error_kind::IOErrorKind;
 use crate::peer::PeerToken;
 
+/// Initialize outgoing connection to a random potential peer.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeerConnectionInitAction {
+pub struct PeerConnectionOutgoingRandomInitAction {}
+
+/// Initialize outgoing connection to potential peer.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PeerConnectionOutgoingInitAction {
     pub address: SocketAddr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeerConnectionPendingAction {
+pub struct PeerConnectionOutgoingPendingAction {
     pub address: SocketAddr,
     pub token: PeerToken,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeerConnectionErrorAction {
+pub struct PeerConnectionOutgoingErrorAction {
     pub address: SocketAddr,
     pub error: IOErrorKind,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeerConnectionSuccessAction {
+pub struct PeerConnectionOutgoingSuccessAction {
     pub address: SocketAddr,
 }

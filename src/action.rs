@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use storage::persistent::{BincodeEncoded, SchemaError};
 
 use crate::event::{P2pPeerEvent, WakeupEvent};
-use crate::peer::connecting::{
-    PeerConnectionErrorAction, PeerConnectionInitAction, PeerConnectionPendingAction,
-    PeerConnectionSuccessAction,
+use crate::peer::connection::outgoing::{
+    PeerConnectionOutgoingErrorAction, PeerConnectionOutgoingInitAction,
+    PeerConnectionOutgoingPendingAction, PeerConnectionOutgoingRandomInitAction,
+    PeerConnectionOutgoingSuccessAction,
 };
 use crate::peer::disconnection::{PeerDisconnectAction, PeerDisconnectedAction};
 use crate::peer::handshaking::connection_message::read::{
@@ -18,8 +19,9 @@ use crate::peer::handshaking::connection_message::write::{
 };
 use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::{PeerTryReadAction, PeerTryWriteAction};
+use crate::peers::add::multi::PeersAddMultiAction;
 use crate::peers::dns_lookup::{
-    PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupInitAction,
+    PeersDnsLookupCleanupAction, PeersDnsLookupErrorAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
 };
 use crate::peers::remove::PeersRemoveAction;
@@ -39,14 +41,16 @@ pub enum Action {
     PeersDnsLookupInit(PeersDnsLookupInitAction),
     PeersDnsLookupError(PeersDnsLookupErrorAction),
     PeersDnsLookupSuccess(PeersDnsLookupSuccessAction),
-    PeersDnsLookupFinish(PeersDnsLookupFinishAction),
+    PeersDnsLookupCleanup(PeersDnsLookupCleanupAction),
 
+    PeersAddMulti(PeersAddMultiAction),
     PeersRemove(PeersRemoveAction),
 
-    PeerConnectionInit(PeerConnectionInitAction),
-    PeerConnectionPending(PeerConnectionPendingAction),
-    PeerConnectionError(PeerConnectionErrorAction),
-    PeerConnectionSuccess(PeerConnectionSuccessAction),
+    PeerConnectionOutgoingRandomInit(PeerConnectionOutgoingRandomInitAction),
+    PeerConnectionOutgoingInit(PeerConnectionOutgoingInitAction),
+    PeerConnectionOutgoingPending(PeerConnectionOutgoingPendingAction),
+    PeerConnectionOutgoingError(PeerConnectionOutgoingErrorAction),
+    PeerConnectionOutgoingSuccess(PeerConnectionOutgoingSuccessAction),
 
     PeerDisconnect(PeerDisconnectAction),
     PeerDisconnected(PeerDisconnectedAction),

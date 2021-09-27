@@ -35,16 +35,8 @@ pub fn peers_dns_lookup_reducer(state: &mut State, action: &ActionWithId<Action>
                 }
             }
         }
-        Action::PeersDnsLookupFinish(_) => {
-            if let Some(dns_lookup_state) = state.peers_dns_lookup.take() {
-                if let PeersDnsLookupStatus::Success { addresses } = dns_lookup_state.status {
-                    for address in addresses {
-                        state.peers.entry(address).or_insert_with(|| Peer {
-                            status: PeerStatus::Potential,
-                        });
-                    }
-                }
-            };
+        Action::PeersDnsLookupCleanup(_) => {
+            state.peers_dns_lookup.take();
         }
         _ => {}
     }

@@ -5,13 +5,14 @@ use crate::service::storage_service::{StorageRequest, StorageRequestPayload};
 use crate::service::{Service, StorageService};
 use crate::State;
 
-use crate::peer::connecting::peer_connecting_effects;
+use crate::peer::connection::outgoing::peer_connection_outgoing_effects;
 use crate::peer::disconnection::peer_disconnection_effects;
 use crate::peer::handshaking::connection_message::read::peer_connection_message_read_effects;
 use crate::peer::handshaking::connection_message::write::peer_connection_message_write_effects;
 use crate::peer::handshaking::peer_handshaking_effects;
 use crate::peer::peer_effects;
 
+use crate::peers::add::multi::peers_add_multi_effects;
 use crate::peers::dns_lookup::peers_dns_lookup_effects;
 
 use crate::storage::block_header::put::storage_block_header_put_effects;
@@ -49,9 +50,10 @@ pub fn effects<S: Service>(store: &mut Store<State, S, Action>, action: &ActionW
     storage_state_snapshot_create_effects(store, action);
 
     peers_dns_lookup_effects(store, action);
+    peers_add_multi_effects(store, action);
 
     peer_effects(store, action);
-    peer_connecting_effects(store, action);
+    peer_connection_outgoing_effects(store, action);
     peer_handshaking_effects(store, action);
     peer_connection_message_write_effects(store, action);
     peer_connection_message_read_effects(store, action);

@@ -1,11 +1,14 @@
 use redux_rs::{ActionWithId, Store};
 
-use crate::peer::connecting::PeerConnectionInitAction;
 use crate::peer::PeerStatus;
+use crate::peers::add::multi::PeersAddMultiAction;
 use crate::service::{DnsService, Service};
 use crate::{action::Action, State};
 
-use super::{PeersDnsLookupErrorAction, PeersDnsLookupFinishAction, PeersDnsLookupSuccessAction};
+use super::{
+    PeersDnsLookupCleanupAction, PeersDnsLookupErrorAction, PeersDnsLookupStatus,
+    PeersDnsLookupSuccessAction,
+};
 
 pub fn peers_dns_lookup_effects<S: Service>(
     store: &mut Store<State, S, Action>,
@@ -23,21 +26,22 @@ pub fn peers_dns_lookup_effects<S: Service>(
             });
         }
         Action::PeersDnsLookupSuccess(_) => {
-            store.dispatch(PeersDnsLookupFinishAction.into());
-        }
-        Action::PeersDnsLookupFinish(_) => {
-            // Try connecting to first potential peer we find.
-            let address = store
-                .state()
-                .peers
-                .iter()
-                .filter(|(_, peer)| matches!(peer.status, PeerStatus::Potential))
-                .map(|(address, _)| address)
-                .next();
-
-            if let Some(&address) = address {
-                store.dispatch(PeerConnectionInitAction { address }.into());
+            let dns_lookup_state = match store.state.get().peers_dns_lookup.as_ref() {
+                Some(v) => v,
+                None => return,
+            };
+            match &dns_lookup_state.status {
+                PeersDnsLookupStatus::Success { addresses } => {
+                    store.dispatch(
+                        PeersAddMultiAction {
+                            addresses: addresses.clone(),
+                        }
+                        .into(),
+                    );
+                }
+                _ => {}
             }
+            store.dispatch(PeersDnsLookupCleanupAction {}.into());
         }
         _ => {}
     }

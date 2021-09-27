@@ -1,4 +1,4 @@
-pub mod connecting;
+pub mod connection;
 pub mod disconnection;
 pub mod handshaking;
 

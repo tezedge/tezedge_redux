@@ -1,5 +1,6 @@
 use redux_rs::{ActionWithId, Store};
 
+use crate::peer::connection::outgoing::PeerConnectionOutgoingRandomInitAction;
 use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::PeerStatus;
 use crate::peers::remove::PeersRemoveAction;
@@ -37,6 +38,7 @@ pub fn peer_disconnection_effects<S>(
                     let address = action.address;
 
                     store.dispatch(PeersRemoveAction { address }.into());
+                    store.dispatch(PeerConnectionOutgoingRandomInitAction {}.into());
                 }
             }
         }
