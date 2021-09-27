@@ -19,17 +19,13 @@ pub fn peer_disconnection_reducer(state: &mut State, action: &ActionWithId<Actio
             };
 
             peer.status = match &peer.status {
-                PeerStatus::Connecting(state) => match state {
-                    PeerConnectionOutgoingState::Pending { token } => PeerDisconnecting {
-                        token: token.clone(),
+                PeerStatus::Connecting(state) => {
+                    if let Some(token) = state.token() {
+                        PeerDisconnecting { token }.into()
+                    } else {
+                        PeerStatus::Disconnected
                     }
-                    .into(),
-                    PeerConnectionOutgoingState::Success { token } => PeerDisconnecting {
-                        token: token.clone(),
-                    }
-                    .into(),
-                    _ => return,
-                },
+                }
                 PeerStatus::Handshaking(state) => PeerDisconnecting { token: state.token }.into(),
                 PeerStatus::Handshaked(state) => PeerDisconnecting { token: state.token }.into(),
                 _ => return,

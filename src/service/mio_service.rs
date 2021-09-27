@@ -1,7 +1,9 @@
 // Copyright (c) SimpleStaking, Viable Systems and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
+use derive_more::From;
 use mio::net::{TcpListener, TcpSocket, TcpStream};
+use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, SocketAddr};
@@ -9,6 +11,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::event::{Event, P2pPeerEvent, P2pPeerUnknownEvent, P2pServerEvent, WakeupEvent};
+use crate::io_error_kind::IOErrorKind;
 use crate::peer::PeerToken;
 
 pub type MioInternalEvent = mio::event::Event;
@@ -29,16 +32,47 @@ pub trait MioService {
 
     fn wait_for_events(&mut self, events: &mut Self::Events, timeout: Option<Duration>);
 
-    fn start_listening_to_incoming_peer_connections(&mut self) -> io::Result<()>;
-    fn stop_listening_to_incoming_peer_connections(&mut self);
-    fn accept_incoming_peer_connection(
+    fn peer_connection_incoming_listen_start(&mut self) -> io::Result<()>;
+    fn peer_connection_incoming_listen_stop(&mut self);
+    fn peer_connection_incoming_accept(
         &mut self,
-    ) -> Option<(PeerToken, &mut MioPeer<Self::PeerStream>)>;
+    ) -> Result<(PeerToken, &mut MioPeer<Self::PeerStream>), PeerConnectionIncomingAcceptError>;
 
     fn peer_connection_init(&mut self, address: SocketAddr) -> io::Result<PeerToken>;
     fn peer_disconnect(&mut self, token: PeerToken);
 
-    fn get_peer(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>>;
+    fn peer_get(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>>;
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum PeerConnectionIncomingAcceptError {
+    /// Not ready to make further progress.
+    WouldBlock,
+
+    /// Server isn't listening for incoming peer connections.
+    ServerNotListening,
+
+    /// Failure when trying to accept peer connection.
+    Accept(IOErrorKind),
+
+    /// Failure when registering peer socket in [mio::Registry].
+    PollRegister(IOErrorKind),
+}
+
+impl PeerConnectionIncomingAcceptError {
+    pub fn accept_error(error: io::Error) -> Self {
+        match error.kind() {
+            io::ErrorKind::WouldBlock => Self::WouldBlock,
+            err_kind => Self::Accept(err_kind.into()),
+        }
+    }
+
+    pub fn poll_register_error(error: io::Error) -> Self {
+        match error.kind() {
+            io::ErrorKind::WouldBlock => Self::WouldBlock,
+            err_kind => Self::PollRegister(err_kind.into()),
+        }
+    }
 }
 
 pub struct MioPeer<Stream> {
@@ -101,7 +135,7 @@ impl MioServiceDefault {
             let is_closed = event.is_error() || event.is_read_closed() || event.is_write_closed();
             let peer_token = PeerToken::new_unchecked(event.token().0);
 
-            match self.get_peer(peer_token) {
+            match self.peer_get(peer_token) {
                 Some(peer) => P2pPeerEvent {
                     token: peer_token,
                     address: peer.address,
@@ -137,7 +171,7 @@ impl MioService for MioServiceDefault {
         };
     }
 
-    fn start_listening_to_incoming_peer_connections(&mut self) -> io::Result<()> {
+    fn peer_connection_incoming_listen_start(&mut self) -> io::Result<()> {
         if self.server.is_none() {
             let socket = match self.listen_addr.ip() {
                 IpAddr::V4(_) => TcpSocket::new_v4()?,
@@ -164,52 +198,39 @@ impl MioService for MioServiceDefault {
         Ok(())
     }
 
-    fn stop_listening_to_incoming_peer_connections(&mut self) {
+    fn peer_connection_incoming_listen_stop(&mut self) {
         drop(self.server.take());
     }
 
-    fn accept_incoming_peer_connection(
+    fn peer_connection_incoming_accept(
         &mut self,
-    ) -> Option<(PeerToken, &mut MioPeer<Self::PeerStream>)> {
+    ) -> Result<(PeerToken, &mut MioPeer<Self::PeerStream>), PeerConnectionIncomingAcceptError>
+    {
         let server = &mut self.server;
         let poll = &mut self.poll;
         let peers = &mut self.peers;
 
         if let Some(server) = server.as_mut() {
-            match server.accept() {
-                Ok((mut stream, address)) => {
-                    let peer_entry = peers.vacant_entry();
-                    let token = mio::Token(peer_entry.key());
+            let (mut stream, address) = server
+                .accept()
+                .map_err(|err| PeerConnectionIncomingAcceptError::accept_error(err))?;
 
-                    let registered_poll = poll.registry().register(
-                        &mut stream,
-                        token,
-                        mio::Interest::READABLE | mio::Interest::WRITABLE,
-                    );
+            let peer_entry = peers.vacant_entry();
+            let token = mio::Token(peer_entry.key());
 
-                    match registered_poll {
-                        Ok(_) => {
-                            let peer = peer_entry.insert(MioPeer::new(address.into(), stream));
-                            Some((PeerToken::new_unchecked(token.0), peer))
-                        }
-                        Err(err) => {
-                            eprintln!("error while registering poll: {:?}", err);
-                            None
-                        }
-                    }
-                }
-                Err(err) => {
-                    match err.kind() {
-                        io::ErrorKind::WouldBlock => {}
-                        _ => {
-                            eprintln!("error while accepting connection: {:?}", err);
-                        }
-                    }
-                    None
-                }
-            }
+            let registered_poll = poll
+                .registry()
+                .register(
+                    &mut stream,
+                    token,
+                    mio::Interest::READABLE | mio::Interest::WRITABLE,
+                )
+                .map_err(|err| PeerConnectionIncomingAcceptError::poll_register_error(err))?;
+
+            let peer = peer_entry.insert(MioPeer::new(address.into(), stream));
+            Ok((PeerToken::new_unchecked(token.0), peer))
         } else {
-            None
+            Err(PeerConnectionIncomingAcceptError::ServerNotListening)
         }
     }
 
@@ -245,7 +266,7 @@ impl MioService for MioServiceDefault {
         }
     }
 
-    fn get_peer(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>> {
+    fn peer_get(&mut self, token: PeerToken) -> Option<&mut MioPeer<Self::PeerStream>> {
         self.peers.get_mut(token.index())
     }
 }

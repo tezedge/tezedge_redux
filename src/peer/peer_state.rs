@@ -7,7 +7,7 @@ use tezos_messages::p2p::encoding::version::NetworkVersion;
 use crate::Port;
 
 use super::{
-    connection::outgoing::PeerConnectionOutgoingState, disconnection::PeerDisconnecting,
+    connection::PeerConnectionState, disconnection::PeerDisconnecting,
     handshaking::PeerHandshaking, PeerCrypto, PeerToken,
 };
 
@@ -27,7 +27,7 @@ pub enum PeerStatus {
     /// Peer is a potential peer.
     Potential,
 
-    Connecting(PeerConnectionOutgoingState),
+    Connecting(PeerConnectionState),
     Handshaking(PeerHandshaking),
     Handshaked(PeerHandshaked),
 
@@ -38,4 +38,17 @@ pub enum PeerStatus {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Peer {
     pub status: PeerStatus,
+}
+
+impl Peer {
+    pub fn token(&self) -> Option<PeerToken> {
+        match &self.status {
+            PeerStatus::Potential => None,
+            PeerStatus::Connecting(state) => state.token(),
+            PeerStatus::Handshaking(state) => Some(state.token),
+            PeerStatus::Handshaked(state) => Some(state.token),
+            PeerStatus::Disconnecting(state) => Some(state.token),
+            PeerStatus::Disconnected => None,
+        }
+    }
 }

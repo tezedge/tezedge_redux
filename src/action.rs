@@ -2,7 +2,12 @@ use derive_more::From;
 use serde::{Deserialize, Serialize};
 use storage::persistent::{BincodeEncoded, SchemaError};
 
-use crate::event::{P2pPeerEvent, WakeupEvent};
+use crate::event::{P2pPeerEvent, P2pServerEvent, WakeupEvent};
+use crate::peer::connection::incoming::accept::{
+    PeerConnectionIncomingAcceptAction, PeerConnectionIncomingAcceptErrorAction,
+    PeerConnectionIncomingAcceptSuccessAction,
+};
+use crate::peer::connection::incoming::PeerConnectionIncomingSuccessAction;
 use crate::peer::connection::outgoing::{
     PeerConnectionOutgoingErrorAction, PeerConnectionOutgoingInitAction,
     PeerConnectionOutgoingPendingAction, PeerConnectionOutgoingRandomInitAction,
@@ -20,6 +25,7 @@ use crate::peer::handshaking::connection_message::write::{
 use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::{PeerTryReadAction, PeerTryWriteAction};
 use crate::peers::add::multi::PeersAddMultiAction;
+use crate::peers::add::PeersAddIncomingPeerAction;
 use crate::peers::dns_lookup::{
     PeersDnsLookupCleanupAction, PeersDnsLookupErrorAction, PeersDnsLookupInitAction,
     PeersDnsLookupSuccessAction,
@@ -43,8 +49,15 @@ pub enum Action {
     PeersDnsLookupSuccess(PeersDnsLookupSuccessAction),
     PeersDnsLookupCleanup(PeersDnsLookupCleanupAction),
 
+    PeersAddIncomingPeer(PeersAddIncomingPeerAction),
     PeersAddMulti(PeersAddMultiAction),
     PeersRemove(PeersRemoveAction),
+
+    PeerConnectionIncomingAccept(PeerConnectionIncomingAcceptAction),
+    PeerConnectionIncomingAcceptError(PeerConnectionIncomingAcceptErrorAction),
+    PeerConnectionIncomingAcceptSuccess(PeerConnectionIncomingAcceptSuccessAction),
+
+    PeerConnectionIncomingSuccess(PeerConnectionIncomingSuccessAction),
 
     PeerConnectionOutgoingRandomInit(PeerConnectionOutgoingRandomInitAction),
     PeerConnectionOutgoingInit(PeerConnectionOutgoingInitAction),
@@ -55,6 +68,7 @@ pub enum Action {
     PeerDisconnect(PeerDisconnectAction),
     PeerDisconnected(PeerDisconnectedAction),
 
+    P2pServerEvent(P2pServerEvent),
     P2pPeerEvent(P2pPeerEvent),
     WakeupEvent(WakeupEvent),
 

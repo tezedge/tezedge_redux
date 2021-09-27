@@ -63,7 +63,7 @@ where
                 _ => return,
             };
 
-            let peer_stream = match store.service.mio().get_peer(peer_token) {
+            let peer_stream = match store.service.mio().peer_get(peer_token) {
                 Some(peer) => &mut peer.stream,
                 None => return,
             };
@@ -120,7 +120,7 @@ where
                 _ => return,
             };
 
-            let peer_stream = match store.service.mio().get_peer(peer_token) {
+            let peer_stream = match store.service.mio().peer_get(peer_token) {
                 Some(peer) => &mut peer.stream,
                 None => return,
             };

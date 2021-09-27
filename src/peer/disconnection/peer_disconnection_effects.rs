@@ -23,14 +23,17 @@ pub fn peer_disconnection_effects<S>(
                 None => return,
             };
 
-            let peer_token = match &peer.status {
-                PeerStatus::Disconnecting(disconnection_state) => disconnection_state.token,
+            match &peer.status {
+                PeerStatus::Disconnecting(disconnection_state) => {
+                    let peer_token = disconnection_state.token;
+                    store.service().mio().peer_disconnect(peer_token);
+                    store.dispatch(PeerDisconnectedAction { address }.into());
+                }
+                PeerStatus::Disconnected => {
+                    store.dispatch(PeerDisconnectedAction { address }.into());
+                }
                 _ => return,
             };
-
-            store.service().mio().peer_disconnect(peer_token);
-
-            store.dispatch(PeerDisconnectedAction { address }.into());
         }
         Action::PeerDisconnected(action) => {
             if let Some(peer) = store.state.get().peers.get(&action.address) {

@@ -90,6 +90,7 @@ fn main() {
         store.service().mio().wait_for_events(&mut events, None);
         for event in events.into_iter() {
             match store.service().mio().transform_event(event) {
+                Event::P2pServer(p2p_server_event) => store.dispatch(p2p_server_event.into()),
                 Event::P2pPeer(p2p_peer_event) => store.dispatch(p2p_peer_event.into()),
                 Event::Wakeup(wakeup_event) => store.dispatch(wakeup_event.into()),
                 _ => {}

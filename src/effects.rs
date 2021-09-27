@@ -1,6 +1,8 @@
 use redux_rs::{ActionWithId, Store};
 
 use crate::action::Action;
+use crate::peer::connection::incoming::accept::peer_connection_incoming_accept_effects;
+use crate::peer::connection::incoming::peer_connection_incoming_effects;
 use crate::service::storage_service::{StorageRequest, StorageRequestPayload};
 use crate::service::{Service, StorageService};
 use crate::State;
@@ -54,6 +56,8 @@ pub fn effects<S: Service>(store: &mut Store<State, S, Action>, action: &ActionW
 
     peer_effects(store, action);
     peer_connection_outgoing_effects(store, action);
+    peer_connection_incoming_accept_effects(store, action);
+    peer_connection_incoming_effects(store, action);
     peer_handshaking_effects(store, action);
     peer_connection_message_write_effects(store, action);
     peer_connection_message_read_effects(store, action);

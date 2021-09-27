@@ -1,5 +1,6 @@
 use redux_rs::{ActionWithId, Store};
 
+use crate::peer::connection::PeerConnectionState;
 use crate::peer::handshaking::PeerHandshakingInitAction;
 use crate::peer::PeerStatus;
 use crate::service::{MioService, RandomnessService, Service};
@@ -56,33 +57,31 @@ pub fn peer_connection_outgoing_effects<S>(
             if !event.is_writable() {
                 return;
             }
+            let address = event.address();
 
-            let mio_peer = match store.service().mio().get_peer(event.token()) {
-                Some(peer) => peer,
-                None => return,
-            };
-            let address = mio_peer.address;
-            let peer = match store.state().peers.get(&address) {
-                Some(peer) => peer,
+            let peer = match store.state.get().peers.get(&address) {
+                Some(v) => v,
                 None => return,
             };
 
-            match peer.status {
-                PeerStatus::Connecting(PeerConnectionOutgoingState::Pending { .. }) => {
-                    store.dispatch(PeerConnectionOutgoingSuccessAction { address }.into());
-                }
+            match &peer.status {
+                PeerStatus::Connecting(connection_state) => match connection_state {
+                    PeerConnectionState::Outgoing(PeerConnectionOutgoingState::Pending {
+                        ..
+                    }) => {
+                        store.dispatch(PeerConnectionOutgoingSuccessAction { address }.into());
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }
-        Action::PeerConnectionOutgoingSuccess(action) => {
-            let address = action.address;
-            store.dispatch(
-                PeerHandshakingInitAction {
-                    address: action.address,
-                }
-                .into(),
-            )
-        }
+        Action::PeerConnectionOutgoingSuccess(action) => store.dispatch(
+            PeerHandshakingInitAction {
+                address: action.address,
+            }
+            .into(),
+        ),
         Action::PeerConnectionOutgoingError(_) => {
             store.dispatch(PeerConnectionOutgoingRandomInitAction {}.into());
         }
