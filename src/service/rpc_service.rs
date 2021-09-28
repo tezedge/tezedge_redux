@@ -196,19 +196,14 @@ impl RpcServiceDefault {
         };
         let start = end.checked_sub(limit - 1).unwrap_or(0);
 
-        let mut state = match Self::get_state_before_action_id(
-            snapshot_storage,
-            action_storage,
-            start,
-        )
-        .await
-        {
-            Ok(v) => v,
-            Err(err) => {
-                dbg!(err);
-                return make_json_response::<Vec<()>>(&vec![]);
-            }
-        };
+        let mut state =
+            match Self::get_state_before_action_id(snapshot_storage, action_storage, start).await {
+                Ok(v) => v,
+                Err(err) => {
+                    dbg!(err);
+                    return make_json_response::<Vec<()>>(&vec![]);
+                }
+            };
 
         let mut actions_with_state = VecDeque::new();
 

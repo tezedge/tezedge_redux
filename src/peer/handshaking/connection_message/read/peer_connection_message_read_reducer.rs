@@ -1,6 +1,6 @@
 use redux_rs::ActionWithId;
 
-use shell_state::networking::chunking::ChunkReadBuffer;
+use crate::tmp::chunking::ChunkReadBuffer;
 
 use crate::{action::Action, peer::PeerStatus, State};
 

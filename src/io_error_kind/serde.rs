@@ -1,15 +1,15 @@
 // Copyright (c) SimpleStaking, Viable Systems and Tezedge Contributors
 // SPDX-License-Identifier: MIT
-//! Use intermediary type [shell_state::io_error_kind::IOErrorKind] to
-//! serialize/deserialize io::ErrorKind, which can't be serialized/
-//! deserialized otherwise.
+
+//! Use intermediary type `IOErrorKind` to serialize/deserialize
+//! io::ErrorKind, which can't be serialized/deserialized otherwise.
 //!
 //! Inside struct usage looks like this:
 //! ```
 //! use serde::{Serialize, Deserialize};
 //! #[derive(Serialize, Deserialize)]
 //! pub struct SomeProposal {
-//!     #[serde(with = "shell_state::io_error_kind::serde")]
+//!     #[serde(with = "io_error_kind::serde")]
 //!     error: std::io::ErrorKind,
 //! }
 //! ```

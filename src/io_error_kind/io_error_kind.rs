@@ -6,10 +6,10 @@ use std::io::ErrorKind;
 
 /// io::ErrorKind substitute, which can be serialized.
 ///
-/// Our state and proposals need to be serializable, but io::ErrorKind
+/// Our state and actions need to be serializable, but io::ErrorKind
 /// is not serializable. So this type is used instead, or this type
 /// is used as intermediary to serialize/deserialize io::ErrorKind.
-/// That is what [shell_state::io_error_kind::serde] is for.
+/// That is what [io_error_kind::serde] is for.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum IOErrorKind {
     NotFound,

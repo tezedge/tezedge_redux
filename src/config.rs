@@ -1,12 +1,12 @@
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
 
+use crate::shell_compatibility_version::ShellCompatibilityVersion;
 use crypto::{
     crypto_box::{CryptoKey, PublicKey, SecretKey},
     hash::{CryptoboxPublicKeyHash, HashTrait},
     proof_of_work::ProofOfWork,
 };
-use shell_state::ShellCompatibilityVersion;
 use tezos_identity::Identity;
 
 use crate::Port;

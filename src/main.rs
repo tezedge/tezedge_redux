@@ -21,6 +21,8 @@ pub use effects::effects;
 
 pub mod request;
 
+pub mod shell_compatibility_version;
+
 pub mod peer;
 
 pub mod peers;
@@ -40,8 +42,8 @@ use service::{
     ServiceDefault, StorageServiceDefault,
 };
 
-pub mod persistent_storage;
-use persistent_storage::{gen_block_headers, init_storage};
+pub mod tmp;
+use tmp::persistent_storage::{gen_block_headers, init_storage};
 
 pub type Port = u16;
 

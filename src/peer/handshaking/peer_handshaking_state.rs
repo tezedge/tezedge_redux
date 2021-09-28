@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::io;
 
+use crate::tmp::chunking::ChunkReadBuffer;
 use crypto::crypto_box::PublicKey;
-use shell_state::networking::chunking::ChunkReadBuffer;
 use tezos_messages::p2p::binary_message::BinaryChunk;
 use tezos_messages::p2p::encoding::ack::NackMotive;
 use tezos_messages::p2p::encoding::prelude::{AckMessage, MetadataMessage, NetworkVersion};
