@@ -115,3 +115,8 @@ pub struct PeerHandshakingAckMessageDecodeAction {
     pub address: SocketAddr,
     pub message: AckMessage,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PeerHandshakingFinishAction {
+    pub address: SocketAddr,
+}

@@ -121,6 +121,7 @@ pub enum Action {
     PeerHandshakingAckMessageDecode(PeerHandshakingAckMessageDecodeAction),
 
     PeerHandshakingError(PeerHandshakingErrorAction),
+    PeerHandshakingFinish(PeerHandshakingFinishAction),
 
     StorageBlockHeadersPut(StorageBlockHeadersPutAction),
     StorageBlockHeaderPutNextInit(StorageBlockHeaderPutNextInitAction),

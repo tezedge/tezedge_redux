@@ -27,9 +27,10 @@ use super::{
     PeerHandshakingAckMessageInitAction, PeerHandshakingAckMessageReadAction,
     PeerHandshakingAckMessageWriteAction, PeerHandshakingConnectionMessageDecodeAction,
     PeerHandshakingConnectionMessageReadAction, PeerHandshakingEncryptionInitAction,
-    PeerHandshakingError, PeerHandshakingErrorAction, PeerHandshakingMetadataMessageDecodeAction,
-    PeerHandshakingMetadataMessageEncodeAction, PeerHandshakingMetadataMessageReadAction,
-    PeerHandshakingMetadataMessageWriteAction, PeerHandshakingStatus,
+    PeerHandshakingError, PeerHandshakingErrorAction, PeerHandshakingFinishAction,
+    PeerHandshakingMetadataMessageDecodeAction, PeerHandshakingMetadataMessageEncodeAction,
+    PeerHandshakingMetadataMessageReadAction, PeerHandshakingMetadataMessageWriteAction,
+    PeerHandshakingStatus,
 };
 
 pub fn peer_handshaking_effects<S>(
@@ -552,7 +553,9 @@ pub fn peer_handshaking_effects<S>(
                     PeerStatus::Handshaking(PeerHandshaking {
                         status: PeerHandshakingStatus::AckMessageReady { .. },
                         ..
-                    }) => store.dispatch(todo!("dispatch me more!!!")),
+                    }) => store.dispatch(PeerHandshakingFinishAction {
+                        address: action.address,
+                    }.into()),
                     _ => {}
                 }
             }
