@@ -190,8 +190,7 @@ impl RpcServiceDefault {
             Some(v) => v,
             None => {
                 let state = Self::get_current_global_state(sender).await.unwrap();
-                let last_action_id_num: u64 = state.last_action_id.into();
-                last_action_id_num.checked_sub(limit).unwrap_or(0)
+                state.last_action_id.into()
             }
         };
         let start = end.checked_sub(limit - 1).unwrap_or(0);
